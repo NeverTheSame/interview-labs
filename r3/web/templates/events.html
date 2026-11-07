@@ -1,0 +1,38 @@
+{% extends "layout.html" %}
+{% block content %}
+<h1>Events</h1>
+<p class="muted">Every action a person took and every decision R3 or its AI made, newest first. A trace joins
+one click to the requests, model calls, runs and changes it caused; open one to follow it.</p>
+
+<form class="filters" method="get" action="{{ base_path }}/events" aria-label="Filter events">
+  <label>Account id <input type="text" name="user" value="{{ filters.user }}" inputmode="numeric" size="6"></label>
+  <label>Kind <input type="text" name="kind" value="{{ filters.kind }}" placeholder="ai. / job.status / ui.click" size="16"></label>
+  <label>Subject <input type="text" name="subject" value="{{ filters.subject }}" placeholder="job:12 / resume:3" size="12"></label>
+  <label>Trace <input type="text" name="trace" value="{{ filters.trace }}" size="34"></label>
+  <button class="btn" type="submit">Show</button>
+  {% if filters.user or filters.kind or filters.subject or filters.trace %}<a href="{{ base_path }}/events">Clear</a>{% endif %}
+</form>
+
+{% if error %}<p class="notice warn" role="alert">{{ error }}</p>{% endif %}
+{% if rows %}
+<div class="table-scroll" tabindex="0" role="region" aria-label="Events">
+<table class="grid events">
+  <thead><tr><th scope="col">When</th><th scope="col">Account</th><th scope="col">Who</th><th scope="col">Kind</th><th scope="col">What happened</th><th scope="col">Trace</th></tr></thead>
+  <tbody>
+  {% for e in rows %}
+  <tr>
+    <td class="nowrap"><time datetime="{{ e.at.isoformat() }}" title="{{ e.at|ago }}">{{ e.at|datetime }}</time></td>
+    <td>{% if e.user_id is not none %}<a href="{{ base_path }}/events?user={{ e.user_id }}">#{{ e.user_id }}</a>{% else %}<span class="muted">—</span>{% endif %}</td>
+    <td>{{ {"user": "person", "ai": "AI", "system": "R3"}.get(e.actor, e.actor) }}</td>
+    <td><a href="{{ base_path }}/events?kind={{ e.kind|urlencode }}"><code>{{ e.kind }}</code></a>{% if e.subject %}<br><a class="small" href="{{ base_path }}/events?subject={{ e.subject|urlencode }}">{{ e.subject }}</a>{% endif %}</td>
+    <td>{{ e.summary }}{% if e.data %}<details><summary class="small">Details</summary><pre class="small">{{ e.data_json }}</pre></details>{% endif %}</td>
+    <td>{% if e.trace_id %}<a href="{{ base_path }}/events?trace={{ e.trace_id }}" title="{{ e.trace_id }}"><code>{{ e.trace_id[:8] }}</code></a>{% endif %}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% elif not error %}
+<p class="muted">No events match.</p>
+{% endif %}
+{% endblock %}

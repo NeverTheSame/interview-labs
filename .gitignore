@@ -1,0 +1,28 @@
+.env
+.DS_Store
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+dist/
+
+# local QA artifacts
+.playwright-mcp/
+*.png
+
+# IDE
+.idea/
+.vscode/
+
+# Eval reports (evals/run.py): keep only the committed offline baseline
+evals/reports/*
+!evals/reports/.gitkeep
+!evals/reports/baseline-offline.md
+
+# /brag launch-video output (local only)
+brag-output*/
+
+# tool caches
+.ruff_cache/

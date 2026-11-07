@@ -1,0 +1,69 @@
+{% extends "layout.html" %}
+{% block head %}
+  <link rel="stylesheet" href="{{ base_path }}/static/{{ asset("label.css") }}">
+  <script src="{{ base_path }}/static/{{ asset("label.js") }}" defer></script>
+{% endblock %}
+{% block content %}
+{% from "_label_counter.html" import counter %}
+<div class="lab-page" id="r3-label" data-base-path="{{ base_path }}" data-rubric="{{ rubric.version }}">
+  <header class="lab-head">
+    <div class="lab-intro">
+      <h1>Label</h1>
+      <p class="sub">One posting at a time, newest unreviewed first. <kbd>1</kbd>–<kbd>9</kbd> (then <kbd>0</kbd>) answer the highlighted
+        question, <kbd>Enter</kbd> saves and moves on (unanswered questions are stored as skipped), <kbd>s</kbd> skips
+        the job, <kbd>u</kbd> brings the last one back, <kbd>n</kbd> jumps to the note. Rubric <code>{{ rubric.version }}</code>.</p>
+    </div>
+    {{ counter(counts) }}
+  </header>
+  <noscript><p class="lab-notice">JavaScript is off: the card and the buttons work, the keys and the skip memory do not.</p></noscript>
+
+  <form class="filters" id="label-filters"
+        hx-get="{{ base_path }}/label/next" hx-target="#label-card" hx-swap="innerHTML" hx-trigger="change">
+    <select name="role" aria-label="Role category">
+      <option value="">any role</option>
+      {% for v in facets.role_categories %}
+        <option value="{{ v.value }}" {{ 'selected' if filter.role_category == v.value }}>{{ v.value }} ({{ v.count }})</option>
+      {% endfor %}
+    </select>
+
+    <select name="location" aria-label="Location kind">
+      <option value="">anywhere</option>
+      {% for v in facets.location_kinds %}
+        <option value="{{ v.value }}" {{ 'selected' if filter.location_kind == v.value }}>{{ v.value }} ({{ v.count }})</option>
+      {% endfor %}
+    </select>
+
+    <select name="employment" aria-label="Employment">
+      <option value="">any type</option>
+      {% for v in facets.employments %}
+        <option value="{{ v.value }}" {{ 'selected' if filter.employment == v.value }}>{{ v.value }} ({{ v.count }})</option>
+      {% endfor %}
+    </select>
+
+    <select name="site" aria-label="Site">
+      <option value="">all sites</option>
+      {% for s in sites %}
+        <option value="{{ s.url }}" {{ 'selected' if filter.site_url == s.url }}>{{ s.name }} ({{ s.count }})</option>
+      {% endfor %}
+    </select>
+
+    <select name="days" aria-label="Scraped within">
+      <option value="">any time</option>
+      <option value="1"  {{ 'selected' if filter.days == 1 }}>last 24h</option>
+      <option value="7"  {{ 'selected' if filter.days == 7 }}>last 7 days</option>
+      <option value="30" {{ 'selected' if filter.days == 30 }}>last 30 days</option>
+      <option value="90" {{ 'selected' if filter.days == 90 }}>last 90 days</option>
+    </select>
+
+    <a class="btn ghost" href="{{ base_path }}/label">Reset</a>
+    <a class="btn ghost" href="{{ base_path }}/label/export" download>Export JSONL</a>
+    <span class="htmx-indicator spinner">loading…</span>
+  </form>
+
+  <p id="label-flash" class="lab-flash" role="status" aria-live="polite"{% if not flash %} hidden{% endif %}>{{ flash }}</p>
+
+  <div id="label-card">
+    {% include "_label_card.html" %}
+  </div>
+</div>
+{% endblock %}

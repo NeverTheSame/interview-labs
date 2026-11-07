@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% if (error is defined and error) or (upload_error is defined and upload_error) or (paste_error is defined and paste_error) %}Error: {% endif %}{{ title }} · R3</title>
+  <link rel="stylesheet" href="{{ base_path }}/static/{{ asset("app.css") }}">
+  <script src="{{ base_path }}/static/{{ asset("htmx.min.js") }}" defer></script>
+  <script src="{{ base_path }}/static/{{ asset("htmx-guards.js") }}" defer></script>
+  <script src="{{ base_path }}/static/{{ asset("track.js") }}" data-base="{{ base_path }}" defer></script>
+  <script src="{{ base_path }}/static/{{ asset("app.js") }}" defer></script>
+  {% block head %}{% endblock %}
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>📋</text></svg>">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  {# viewer() is None while sign-in is off; then the header is the full nav, as before. #}
+  {% set viewer_ = viewer() if viewer is defined else none %}
+  <header class="topbar">
+    <a class="brand" href="{{ base_path }}/">R3<span>job search</span></a>
+    {% if viewer_ is none or viewer_.user %}
+    {# Everyone gets the job-search pages; admins (and sign-in off, which is the
+       local admin) also get the operator pages as a separate group. A page that
+       knows its viewer passes ``seeker`` so the nav always matches the page. #}
+    {% set operator_ = (not seeker) if seeker is defined else (viewer_ is none or viewer_.user.is_admin) %}
+    <nav aria-label="Main">
+      {% if operator_ %}<a href="{{ base_path }}/"       class="{{ 'on' if nav == 'overview' }}"{% if nav == 'overview' %} aria-current="page"{% endif %}>Home</a>{% endif %}
+      <a href="{{ base_path }}/controller" class="{{ 'on' if nav == 'controller' }}"{% if nav == 'controller' %} aria-current="page"{% endif %}>Assistant</a>
+      <a href="{{ base_path }}/jobs"   class="{{ 'on' if nav == 'jobs' }}"{% if nav == 'jobs' %} aria-current="page"{% endif %}>Jobs</a>
+      {% if operator_ %}<a href="{{ base_path }}/scout"  class="{{ 'on' if nav == 'scout' }}"{% if nav == 'scout' %} aria-current="page"{% endif %}>Explore</a>{% endif %}
+      <a href="{{ base_path }}/resume" class="{{ 'on' if nav == 'resume' }}"{% if nav == 'resume' %} aria-current="page"{% endif %}>Resume</a>
+      {% if operator_ %}<a href="{{ base_path }}/events" class="{{ 'on' if nav == 'events' }}"{% if nav == 'events' %} aria-current="page"{% endif %}>Events</a>{% endif %}
+      {% if operator_ %}
+      <span class="nav-ops" role="group" aria-label="Operator pages">
+        <a href="{{ base_path }}/label"  class="{{ 'on' if nav == 'label' }}"{% if nav == 'label' %} aria-current="page"{% endif %}>Label</a>
+        <a href="{{ base_path }}/settings" class="{{ 'on' if nav == 'settings' }}"{% if nav == 'settings' %} aria-current="page"{% endif %}>Settings</a>
+      </span>
+      {% endif %}
+    </nav>
+    {% endif %}
+    {% if viewer_ is not none %}
+    <div class="account">
+      {% if viewer_.user %}
+      <span class="account-name" title="Signed in as {{ viewer_.user.account_name }}">{{ viewer_.user.account_name }}</span>
+      <form method="post" action="{{ base_path }}/logout"><button class="btn tiny ghost" type="submit">Sign out</button></form>
+      {% else %}
+      <a href="{{ base_path }}/login">Sign in</a>
+      {% if signup_open() %}<a class="btn tiny go" href="{{ base_path }}/signup">Create account</a>{% endif %}
+      {% endif %}
+    </div>
+    {% endif %}
+  </header>
+  <main id="main" tabindex="-1">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

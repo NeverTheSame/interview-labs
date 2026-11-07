@@ -1,0 +1,8 @@
+{# The builder's progress checklist, from builder.completeness(). #}
+<p class="rb-count"><strong>{{ progress.done }} of {{ progress.total }}</strong> sections</p>
+<progress class="rb-bar" max="{{ progress.total }}" value="{{ progress.done }}" aria-hidden="true"></progress>
+<ul class="rb-checklist">
+  {% for item in progress["items"] %}
+  <li class="{{ 'done' if item.done }}"><span aria-hidden="true">{{ "✓" if item.done else "○" }}</span> {{ item.section }}<span class="sr-only">{{ ": done" if item.done else ": to do" }}</span></li>
+  {% endfor %}
+</ul>

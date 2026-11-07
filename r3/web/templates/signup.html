@@ -1,0 +1,24 @@
+{% extends "layout.html" %}
+{% block content %}
+<section class="auth">
+  <div class="auth-intro">
+    <h1>Create your R3 account</h1>
+    <p>R3 puts jobs from many job sites in one list for you to triage.</p>
+    <p>It matches them against your resume and keeps track of where you applied.</p>
+  </div>
+  <form class="auth-card" method="post" action="{{ base_path }}/signup" novalidate>
+    {% if error %}<p class="auth-error" id="form-error" role="alert">{{ error }}</p>{% endif %}
+    <input type="hidden" name="next" value="{{ next }}">
+    <label for="account_name">Account name</label>
+    <input id="account_name" name="account_name" value="{{ account_name }}" autocomplete="username" maxlength="40"{% if error and error_field == "account_name" %} aria-invalid="true" aria-describedby="form-error name-hint"{% else %} aria-describedby="name-hint"{% endif %}{% if not error or error_field == "account_name" %} autofocus{% endif %}>
+    <small id="name-hint" class="muted">3–40 characters: letters, digits, dot, underscore or dash.</small>
+    <label for="password">Password</label>
+    <input id="password" type="password" name="password" autocomplete="new-password"{% if error and error_field == "password" %} aria-invalid="true" aria-describedby="form-error password-hint" autofocus{% else %} aria-describedby="password-hint"{% endif %}>
+    <small id="password-hint" class="muted">At least {{ password_min }} characters.</small>
+    <label for="password_confirm">Confirm password</label>
+    <input id="password_confirm" type="password" name="password_confirm" autocomplete="new-password"{% if error and error_field == "password_confirm" %} aria-invalid="true" aria-describedby="form-error" autofocus{% endif %}>
+    <button class="btn go big" type="submit">Create account</button>
+    <p class="muted">Already have an account? <a href="{{ base_path }}/login{{ '?next=' ~ (next|urlencode) if next != '/' }}">Sign in</a></p>
+  </form>
+</section>
+{% endblock %}

@@ -1,0 +1,64 @@
+{% extends "layout.html" %}
+{% block content %}
+<h1>Overview</h1>
+<p class="sub">Newest job added {{ stats.last_scrape_at|ago }} · {{ stats.last_scrape_at|datetime }}</p>
+
+<div class="stats">
+  <a class="stat" href="{{ base_path }}/jobs">
+    <div class="n">{{ stats.total_jobs|thousands }}</div><div class="l">jobs total</div>
+  </a>
+  <a class="stat accent" href="{{ base_path }}/jobs?status=new">
+    <div class="n">{{ stats.new_jobs|thousands }}</div><div class="l">new / unreviewed</div>
+  </a>
+  <a class="stat" href="{{ base_path }}/jobs?status=applied">
+    <div class="n">{{ stats.applied_jobs|thousands }}</div><div class="l">applied</div>
+  </a>
+  <a class="stat" href="{{ base_path }}/jobs?days=7">
+    <div class="n">{{ stats.jobs_last7|thousands }}</div><div class="l">added last 7d</div>
+  </a>
+  <a class="stat" href="{{ base_path }}/jobs?days=30">
+    <div class="n">{{ stats.jobs_last30|thousands }}</div><div class="l">added last 30d</div>
+  </a>
+  <div class="stat">
+    <div class="n">{{ stats.total_sites|thousands }}</div><div class="l">job sites</div>
+  </div>
+</div>
+
+<div class="cols">
+  {% for heading, key, values in [("By role", "role", facets.role_categories),
+                                  ("By location", "location", facets.location_kinds),
+                                  ("By status", "status", facets.statuses)] %}
+  <section>
+    <h2>{{ heading }}</h2>
+    <ul class="bars">
+      {% for v in values %}
+      <li>
+        <a href="{{ base_path }}/jobs?{{ key }}={{ v.value|urlencode }}">
+          <span class="k">{{ v.value }}</span>
+          <span class="bar"><i style="width:{{ pct(v.count, stats.total_jobs) }}"></i></span>
+          <span class="v">{{ v.count|thousands }}</span>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endfor %}
+</div>
+
+<section>
+  <h2>Top sites by jobs</h2>
+  <div class="table-scroll" role="region" aria-label="Top sites by jobs" tabindex="0">
+  <table class="grid">
+    <thead><tr><th>Site</th><th class="num">Jobs</th></tr></thead>
+    <tbody>
+      {% for s in top_sites %}
+      <tr>
+        <td><a href="{{ base_path }}/jobs?site={{ s.url|urlencode }}">{{ s.name }}</a></td>
+        <td class="num strong">{{ s.count|thousands }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+{% endblock %}

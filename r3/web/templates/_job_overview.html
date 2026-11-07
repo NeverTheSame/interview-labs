@@ -1,0 +1,13 @@
+{# The body of a regular account's "About this role" (OQ-6): the overview
+   once there is one, else the button that asks for it. Also the htmx swap
+   response of POST /jobs/{id}/overview; swap: the new text takes focus. #}
+{% if overview %}
+<p class="overview-text"{% if swap is defined and swap %} tabindex="-1" autofocus{% endif %}>{{ overview.text }}</p>
+{% else %}
+<form method="post" action="{{ base_path }}/jobs/{{ job.id }}/overview" class="overview-form"
+      hx-post="{{ base_path }}/jobs/{{ job.id }}/overview" hx-target="#job-overview" hx-swap="innerHTML"
+      hx-disabled-elt="find button">
+  <button class="btn" type="submit">Show an overview of this role</button>
+  <span class="htmx-indicator muted small">Writing the overview… this can take up to a minute.</span>
+</form>
+{% endif %}

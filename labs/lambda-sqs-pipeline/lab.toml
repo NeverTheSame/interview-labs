@@ -1,0 +1,65 @@
+id = "lambda-sqs-pipeline"
+title = "Order pipeline: SQS → Lambda → DynamoDB"
+level = "beginner"
+minutes = 45
+skills = ["aws lambda", "amazon sqs", "dynamodb", "serverless", "event-driven architecture", "dead-letter queues"]
+services = ["sqs", "lambda", "dynamodb"]
+
+interview_questions = [
+  "SQS is at-least-once. How do you stop a redelivered order from being charged twice?",
+  "Why should the queue's visibility timeout be longer than the function's timeout, and what happens if it is not?",
+  "One message in a batch of ten is malformed. Without partial batch responses, what happens to the other nine?",
+  "When does a message move to the dead-letter queue, and how would you replay it once the bug is fixed?",
+  "Standard queue or FIFO queue for orders? What do you give up with each?",
+  "How does Lambda scale when the queue backs up, and how would you cap it so DynamoDB is not overwhelmed?",
+]
+
+[fidelity]
+real = [
+  "Lambda runs your Python code, with the same event shape as AWS",
+  "The event source mapping polls SQS and invokes your function in batches",
+  "SQS redrive moves a message to the dead-letter queue after maxReceiveCount receives",
+  "DynamoDB stores and returns your items",
+]
+stand_in = [
+  "IAM is not enforced: any role ARN is accepted, so a missing permission will not fail here",
+  "AWS_ENDPOINT_URL is set inside the function so boto3 reaches the local stack; on AWS it is unset and boto3 uses the real endpoints",
+]
+differs_on_aws = [
+  "The function's execution role needs sqs:ReceiveMessage, sqs:DeleteMessage, sqs:GetQueueAttributes and dynamodb:PutItem, or the mapping and writes fail",
+  "Cold starts, concurrency limits and throttling exist; maximum concurrency on the mapping caps them",
+  "Logs and metrics go to CloudWatch; watch ApproximateAgeOfOldestMessage and the DLQ depth",
+]
+
+[[tasks]]
+id = "queues"
+title = "Create the queue and its dead-letter queue"
+description = "Create a standard SQS queue `orders` and a queue `orders-dlq`. Give `orders` a redrive policy that sends a message to `orders-dlq` after 3 to 5 failed receives."
+check = "queues"
+hint = "The redrive policy is a queue attribute: RedrivePolicy = {\"deadLetterTargetArn\": <dlq arn>, \"maxReceiveCount\": \"3\"}."
+
+[[tasks]]
+id = "table"
+title = "Create the orders table"
+description = "Create a DynamoDB table `orders` with the partition key `order_id` (string). Use on-demand billing."
+check = "table"
+
+[[tasks]]
+id = "function"
+title = "Write the processor function"
+description = "Deploy a Python Lambda `process-order`. For each SQS record it parses the JSON body {\"order_id\": str, \"amount\": number} and writes the order to the `orders` table. A record it cannot parse must not stop the rest of the batch."
+check = "function"
+hint = "Return {\"batchItemFailures\": [{\"itemIdentifier\": <messageId>}]} for the records that failed."
+
+[[tasks]]
+id = "wiring"
+title = "Connect the queue to the function"
+description = "Create an event source mapping from `orders` to `process-order` with partial batch responses switched on. Set the queue's visibility timeout to at least six times the function's timeout."
+check = "wiring"
+hint = "FunctionResponseTypes = [\"ReportBatchItemFailures\"]; the visibility timeout is an attribute of the queue, the timeout an attribute of the function."
+
+[[tasks]]
+id = "end-to-end"
+title = "Send an order through"
+description = "A good order sent to `orders` lands in the table within 20 seconds, even when it shares a batch with a malformed one."
+check = "end_to_end"

@@ -1,0 +1,65 @@
+[project]
+name = "interview-labs"
+version = "0.1.0"
+description = "Hands-on cloud and data labs for interview prep on a local stack (MiniStack), with an AI job-search assistant"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "jinja2>=3.1",
+    "asyncpg>=0.29",
+    "pydantic>=2.7",
+    "python-dotenv>=1.0",
+    "python-multipart>=0.0.9",
+    "httpx>=0.27",
+    "pydantic-ai-slim[openai,openrouter,typesafe,temporal]>=2.49",
+    "temporalio[pydantic]>=1.33",
+    "cryptography>=43",
+    "selectolax>=0.3.21",
+    "pypdf>=6.19.0",
+    "fpdf2>=2.8.9",
+    "opentelemetry-sdk>=1.44",
+    "opentelemetry-exporter-otlp-proto-http>=1.44",
+    "boto3>=1.35",
+]
+
+[project.optional-dependencies]
+# Clients for the labs that do not run on MiniStack (Redis, the Snowflake stand-in).
+labs = [
+    "redis>=5.2",
+    "fakesnow>=0.12",
+    "snowflake-connector-python~=4.4",
+]
+
+[project.scripts]
+labs = "labkit.cli:main"
+r3-portal = "r3.portal:main"
+r3-label = "r3.portal:label"
+r3-worker = "r3.worker:main"
+r3-temporal-dev = "r3.runs.devserver:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "pytest-asyncio>=0.23",
+    "httpx>=0.27",
+    "pydantic-evals>=2.49",
+    "pytest-playwright>=0.9.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["r3", "labkit"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "evals"]
+asyncio_mode = "auto"
+markers = [
+    "live: talks to a real service, a model provider (needs an API key); skipped otherwise",
+    "temporal: starts Temporal's local test server (downloads a binary on first run)",
+    "e2e: browser end-to-end tests in tests/e2e (Playwright + a throwaway Postgres from R3_E2E_PG_URL); skipped when it is unset",
+]

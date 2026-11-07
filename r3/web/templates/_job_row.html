@@ -1,0 +1,70 @@
+{# One table row. Also the swap target for a status action, so acting on
+   a job updates just its row rather than reloading the table. #}
+{# seeker: a regular account. It gets View / Applied / Not for me, and an
+   Undo back to "new" after either, instead of the operator's open / applied /
+   skip / expire / reset. #}
+{# skills: a seeker's resume skills (tags). When given, the row shows how many
+   of the posting's tags the resume covers and highlights those tags. #}
+{# swap: the row is an htmx swap response, so the control that replaces the
+   pressed one takes focus and a screen-reader status is announced. #}
+{% macro job_row(job, seeker=false, skills=none, swap=false) %}
+{% set who %}<span class="sr-only"> {{ job.position }} at {{ job.company|company|dash }}</span>{% endset %}
+<tr id="job-{{ job.id }}" class="st-{{ job.status }}">
+  <td class="pos">
+    <a href="{{ base_path }}/jobs/{{ job.id }}">{{ job.position }}</a>
+    {% if job.tech_tags %}
+    {% set tags = job.tech_tags|unique|list %}
+    {% set matched = tags|select("in", skills)|list if seeker and skills else [] %}
+    {% if seeker and skills %}<span class="match-badge{{ ' none' if not matched }}" title="Skills from your resume that this posting lists">{{ matched|length }} of {{ tags|length }} skills</span>{% endif %}
+    <div class="tags">{% for t in job.tech_tags %}<span class="tag{{ ' matched' if t in matched }}">{{ t }}</span>{% endfor %}</div>
+    {% endif %}
+  </td>
+  <td>{{ job.company|company|dash }}</td>
+  <td class="muted">
+    {{ job.location|dash|truncate(28) }}
+    {% if job.location_kind %}<span class="tag lk">{{ job.location_kind }}</span>{% endif %}
+  </td>
+  <td class="muted">{{ job.role_category|dash }}</td>
+  <td class="num">{{ salary(job.salary_min, job.salary_max, job.salary) }}</td>
+  {# The source board is operator detail; a seeker never learns where a job came from (OQ-6). #}
+  {% if not seeker %}
+  <td class="muted"><a href="{{ base_path }}/jobs?site={{ job.site_url|urlencode }}">{{ job.site_name|truncate(20) }}</a></td>
+  {% endif %}
+  <td class="muted" title="{{ job.scraped_at|datetime }}">{{ job.scraped_at|ago }}</td>
+  <td><span class="pill {{ job.status }}">{{ "not for me" if seeker and job.status == "skipped" else job.status }}</span></td>
+  <td class="actions">
+    {% if seeker %}
+    <a class="btn tiny go" href="{{ base_path }}/jobs/{{ job.id }}">View{{ who }}</a>
+    {% if job.status == "new" %}
+      <button class="btn tiny" hx-post="{{ base_path }}/jobs/{{ job.id }}/status" hx-vals='{"status":"applied"}'
+              hx-target="closest tr" hx-swap="outerHTML" title="Mark that you applied to this job"{{ ' autofocus' if swap }}>Applied{{ who }}</button>
+      <button class="btn tiny" hx-post="{{ base_path }}/jobs/{{ job.id }}/status" hx-vals='{"status":"skipped"}'
+              hx-target="closest tr" hx-swap="outerHTML" title="Hide this job from your new jobs">Not for me{{ who }}</button>
+    {% elif job.status in ("applied", "skipped") %}
+      <span class="undo-note">{{ "Marked applied" if job.status == "applied" else "Not for me" }}</span>
+      <button class="btn tiny ghost" hx-post="{{ base_path }}/jobs/{{ job.id }}/status" hx-vals='{"status":"new"}'
+              hx-target="closest tr" hx-swap="outerHTML"{{ ' autofocus' if swap }}>Undo{{ who }}</button>
+    {% endif %}
+    {% else %}
+    <a class="btn tiny" href="{{ (job.apply_url or job.job_url)|safe_url }}" target="_blank" rel="noopener">open <span aria-hidden="true">↗</span><span class="sr-only"> {{ job.position }} (opens in new tab)</span></a>
+    {% if job.status != "applied" %}
+      <button class="btn tiny go" hx-post="{{ base_path }}/jobs/{{ job.id }}/status" hx-vals='{"status":"applied"}'
+              hx-target="closest tr" hx-swap="outerHTML">applied</button>
+    {% endif %}
+    {% if job.status != "skipped" %}
+      <button class="btn tiny" hx-post="{{ base_path }}/jobs/{{ job.id }}/status" hx-vals='{"status":"skipped"}'
+              hx-target="closest tr" hx-swap="outerHTML">skip</button>
+    {% endif %}
+    {% if job.status != "expired" %}
+      <button class="btn tiny" hx-post="{{ base_path }}/jobs/{{ job.id }}/status" hx-vals='{"status":"expired"}'
+              hx-target="closest tr" hx-swap="outerHTML">expire</button>
+    {% endif %}
+    {% if job.status != "new" %}
+      <button class="btn tiny ghost" hx-post="{{ base_path }}/jobs/{{ job.id }}/status" hx-vals='{"status":"new"}'
+              hx-target="closest tr" hx-swap="outerHTML">reset</button>
+    {% endif %}
+    {% endif %}
+  </td>
+</tr>
+{% if swap and seeker %}<div id="jobs-status" class="sr-only" role="status" hx-swap-oob="true">{% if job.status == "applied" %}Marked applied: {{ job.position }} at {{ job.company|company|dash }}{% elif job.status == "skipped" %}Marked not for me: {{ job.position }} at {{ job.company|company|dash }}{% else %}Undone: {{ job.position }} at {{ job.company|company|dash }}{% endif %}</div>{% endif %}
+{% endmacro %}

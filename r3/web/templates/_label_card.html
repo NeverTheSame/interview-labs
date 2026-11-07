@@ -1,0 +1,77 @@
+{# The labeling card: the posting on the left, the rubric on the right. Also
+   the body of the /label/next and POST /label/{id} fragments. Without a job
+   it is the "nothing left" state. #}
+{% if job %}
+<article class="lab-card" id="lab-card" data-job-id="{{ job.id }}"{% if existing %} data-labeled="true"{% endif %}>
+  <section class="lab-job" aria-label="Posting">
+    <header class="lab-jobhead">
+      <h2 class="lab-title">{{ job.position }}</h2>
+      <p class="lab-sub">
+        {{ job.company|dash }} · {{ job.location|dash }}
+        {% if job.location_kind %}<span class="tag lk">{{ job.location_kind }}</span>{% endif %}
+        <span class="pill {{ job.status }}">{{ job.status }}</span>
+      </p>
+    </header>
+    <dl class="lab-meta">
+      <div><dt>Employment</dt><dd>{{ job.employment|dash }}</dd></div>
+      <div><dt>Salary</dt><dd>{{ salary(job.salary_min, job.salary_max, job.salary) }}</dd></div>
+      <div><dt>Site</dt><dd>{{ job.site_name }}</dd></div>
+      <div><dt>Posted</dt><dd>{{ job.posted_date|date }}</dd></div>
+      <div><dt>Scraped</dt><dd title="{{ job.scraped_at|datetime }}">{{ job.scraped_at|ago }}</dd></div>
+      <div><dt>Classified role</dt><dd>{{ job.role_category|dash }}</dd></div>
+      <div><dt>Job</dt><dd><a href="{{ base_path }}/jobs/{{ job.id }}">#{{ job.id }}</a> ·
+        <a href="{{ job.job_url|safe_url }}" target="_blank" rel="noopener">source ↗</a></dd></div>
+    </dl>
+    {% if existing %}
+    <p class="lab-previous">You labeled this <span title="{{ existing.labeled_at|datetime }}">{{ existing.labeled_at|ago }}</span>:
+      {{ existing_summary }}{% if existing.note %} · “{{ existing.note }}”{% endif %}.
+      Saving again overwrites it; the earlier answers go to the history table.</p>
+    {% endif %}
+    <div class="lab-desc" tabindex="0" aria-label="Description">
+      {% for p in job.description|paragraphs %}<p>{{ p }}</p>{% else %}<p class="muted">No description was scraped.</p>{% endfor %}
+    </div>
+  </section>
+
+  <form class="lab-form" id="label-form" aria-label="Rubric"
+        hx-post="{{ base_path }}/label/{{ job.id }}" hx-target="#label-card" hx-swap="innerHTML"
+        hx-include="#label-filters">
+    {% for q in rubric.questions %}
+    <fieldset class="lab-q{{ ' big' if q.kind == 'score' }}" data-q="{{ q.key }}" data-kind="{{ q.kind }}"{% if q.exclusive %} data-exclusive="{{ q.exclusive }}"{% endif %}>
+      <legend>{{ q.title }}{% if q.hint %} <span class="lab-hint">{{ q.hint }}</span>{% endif %}</legend>
+      <div class="lab-opts">
+        {% for o in q.options %}
+        {% set key = q.keys[loop.index0] %}
+        <label class="opt opt-{{ o.value }}" data-key="{{ key }}" title="{{ o.description }}">
+          <input type="{{ 'checkbox' if q.kind == 'multi' else 'radio' }}" name="{{ q.key }}" value="{{ o.value }}"{% if o.value in checked.get(q.key, ()) %} checked{% endif %}>
+          <kbd>{{ key }}</kbd><span>{{ o.label }}</span>
+        </label>
+        {% endfor %}
+      </div>
+    </fieldset>
+    {% endfor %}
+    <label class="lab-note">Note
+      <input type="text" name="note" id="label-note" maxlength="1000" autocomplete="off" spellcheck="true"
+             placeholder="optional, one line" value="{{ existing.note if existing else '' }}">
+    </label>
+    <div class="lab-actions">
+      <button type="submit" class="btn go big" id="label-save">Save &amp; next <kbd>Enter</kbd></button>
+      <button type="button" class="btn" id="label-skip"
+              hx-get="{{ base_path }}/label/next" hx-target="#label-card" hx-swap="innerHTML"
+              hx-include="#label-filters">Skip job <kbd>s</kbd></button>
+      <button type="button" class="btn ghost" id="label-undo">Undo last <kbd>u</kbd></button>
+      <a class="btn ghost" href="{{ (job.apply_url or job.job_url)|safe_url }}" target="_blank" rel="noopener">Open posting ↗</a>
+    </div>
+    <p class="lab-status" id="label-status" aria-live="polite"></p>
+  </form>
+</article>
+{% else %}
+<div class="lab-empty" id="lab-card">
+  <p><strong>Nothing left to label in this filter.</strong>
+    Every matching posting is labeled or was skipped in this session.</p>
+  <p class="lab-actions">
+    <a class="btn" href="{{ base_path }}/label">Reset filter</a>
+    <button type="button" class="btn ghost" id="label-undo">Undo last <kbd>u</kbd></button>
+    <a class="btn ghost" href="{{ base_path }}/label/export" download>Export JSONL</a>
+  </p>
+</div>
+{% endif %}

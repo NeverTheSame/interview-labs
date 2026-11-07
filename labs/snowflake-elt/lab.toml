@@ -1,0 +1,51 @@
+id = "snowflake-elt"
+title = "Snowflake ELT: JSON, deduplication and MERGE"
+level = "intermediate"
+minutes = 60
+skills = ["snowflake", "sql", "elt", "semi-structured data", "window functions", "data modeling"]
+services = ["snowflake (stand-in)"]
+
+interview_questions = [
+  "Events can arrive twice or out of order. How do you keep only the latest version of each order, and what does QUALIFY save you?",
+  "What is a VARIANT column, and when would you flatten JSON at load time instead of at query time?",
+  "Your MERGE runs twice because a scheduler retried it. What happens, and how do you make sure that is safe?",
+  "How do warehouses, credits and auto-suspend shape what a query costs in Snowflake?",
+  "What would you use Time Travel and zero-copy clones for in a deployment?",
+  "Streams and tasks or an external orchestrator (dbt, Airflow) for incremental loads? Why?",
+]
+
+[fidelity]
+real = [
+  "Your SQL runs, in Snowflake's dialect: VARIANT, the : path syntax, :: casts, LATERAL FLATTEN, QUALIFY and MERGE",
+  "Results are compared row by row with the expected answer",
+]
+stand_in = [
+  "This is fakesnow, an open-source library that translates Snowflake SQL to DuckDB in-process; it is not Snowflake",
+  "There are no warehouses, credits, roles or micro-partitions; clustering keys are accepted and ignored",
+  "Time Travel (AT / BEFORE), streams, tasks, Snowpipe and zero-copy cloning are not available",
+]
+differs_on_aws = [
+  "On Snowflake every query runs on a virtual warehouse you pay for by the second while it runs",
+  "Access is governed by roles (RBAC) on databases, schemas and tables",
+  "Large tables are pruned by micro-partition metadata; a clustering key helps when filters do not match load order",
+]
+
+[[tasks]]
+id = "latest"
+title = "Keep the latest event per order"
+description = "answers/latest_orders.sql returns one row per order from raw.order_events (its newest event by loaded_at): order_id, status, customer_id."
+check = "latest_orders"
+hint = "QUALIFY row_number() OVER (PARTITION BY payload:order_id::string ORDER BY loaded_at DESC) = 1"
+
+[[tasks]]
+id = "lines"
+title = "Flatten the items"
+description = "answers/order_lines.sql returns one row per item of each order's latest event: order_id, sku, qty, line_total (qty × price, 2 decimals). Orders without items return no rows."
+check = "order_lines"
+hint = "LATERAL FLATTEN(input => payload:items) gives one row per array element in value."
+
+[[tasks]]
+id = "merge"
+title = "Upsert into the core table"
+description = "answers/upsert_orders.sql is a MERGE that brings core.orders up to date with each order's latest event: update the ones it has, insert the new ones, leave the others alone. Running it twice must give the same table."
+check = "upsert_orders"

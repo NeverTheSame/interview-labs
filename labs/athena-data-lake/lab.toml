@@ -1,0 +1,61 @@
+id = "athena-data-lake"
+title = "Data lake: S3 + Glue Data Catalog + Athena"
+level = "beginner"
+minutes = 45
+skills = ["amazon athena", "aws glue", "amazon s3", "data lake", "sql", "partitioning"]
+services = ["s3", "glue", "athena"]
+
+interview_questions = [
+  "Athena bills per byte scanned. Name three ways to make a query on this table cheaper.",
+  "Why lay files out as dt=YYYY-MM-DD/ folders, and what happens to a query that does not filter on dt?",
+  "A new day's folder lands in S3 but Athena does not see it. Why, and what are the ways to fix it?",
+  "CSV or Parquet for the curated layer? What changes for cost and speed?",
+  "What is the Glue Data Catalog, and who else reads it besides Athena?",
+  "How would you turn this raw CSV into a partitioned Parquet table on AWS?",
+]
+
+[fidelity]
+real = [
+  "S3 stores your files and folders",
+  "The Glue Data Catalog stores your database and table definitions",
+  "Athena really runs your SQL over the files in S3 and returns the rows",
+  "Saved (named) queries are stored and can be run by name",
+]
+stand_in = [
+  "Queries run on DuckDB, not Trino: most standard SQL matches, some Athena functions do not",
+  "Partitions are read straight from the dt=... folders; there is no partition list to keep in sync",
+  "CREATE TABLE AS SELECT and views are not supported locally",
+]
+differs_on_aws = [
+  "Athena only sees partitions the catalog knows about: run MSCK REPAIR TABLE, add them, use a Glue crawler or partition projection",
+  "Every query is billed by bytes scanned; partition filters and columnar formats (Parquet) cut that",
+  "CTAS and INSERT INTO write Parquet back to S3, which is how a curated layer is usually built",
+  "Lake Formation or IAM decides who may read which tables and columns",
+]
+
+[[tasks]]
+id = "lake"
+title = "Load the raw files into the lake"
+description = "Create the buckets `lake` and `lake-athena-results`. Upload this lab's data/orders/ folder to s3://lake/raw/orders/, keeping the dt=... folders."
+check = "lake"
+hint = "aws s3 cp labs/athena-data-lake/data/orders s3://lake/raw/orders/ --recursive"
+
+[[tasks]]
+id = "catalog"
+title = "Describe the data in the Glue catalog"
+description = "Create the Glue database `shop` and an external table `orders` over s3://lake/raw/orders/: columns order_id (string), customer (string), amount (double), country (string), partitioned by dt (string). The CSV files have a header row."
+check = "catalog"
+hint = "Partition keys go in PartitionKeys, not in the column list; set skip.header.line.count = 1."
+
+[[tasks]]
+id = "revenue"
+title = "Revenue by country"
+description = "Save an Athena named query `revenue_by_country` in database `shop` that returns country and revenue (the sum of amount), highest revenue first."
+check = "revenue"
+
+[[tasks]]
+id = "one-day"
+title = "Query one day without scanning the rest"
+description = "Save a named query `orders_on_day` that returns the number of orders on 2026-11-02 and filters on the partition column so only that day's files are read."
+check = "one_day"
+hint = "Filter on dt, not on a date computed from another column."

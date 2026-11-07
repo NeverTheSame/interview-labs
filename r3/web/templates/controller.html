@@ -1,0 +1,268 @@
+{% extends "layout.html" %}
+{% block content %}
+{% set provider_names = {"openrouter": "OpenRouter", "openai": "OpenAI", "typesafe": "TypeSafe"} %}
+{% set custom_ok = is_admin and settings.allow_custom_models and settings.provider_ready("openrouter") %}
+<div class="ctl-head">
+  {% if is_admin %}
+  <h1>Controller</h1>
+  <p class="sub">Run the job search from here. Chat with R3; the runs, jobs and statistics it works with land in the Pipelines panel.</p>
+  {% else %}
+  <h1>Assistant</h1>
+  <p class="sub">Ask R3 to show what is new, filter jobs, or check how well your resume fits a job; what it finds shows up in the panel. <a class="ctl-resume-link" href="{{ base_path }}/resume">Your resume →</a></p>
+  {% endif %}
+</div>
+<noscript><p class="ctl-noscript">JavaScript is off: the pipeline numbers below are live, but chatting, starting runs and acting on jobs need it.</p></noscript>
+
+<div class="workspace" id="r3-controller" data-base-path="{{ base_path }}" data-default-model="{{ default_model }}" data-chat-ready="{{ 'true' if chat_ready else 'false' }}" data-user-id="{{ user.id }}" data-admin="{{ 'true' if is_admin else 'false' }}" data-max-upload="{{ max_upload }}">
+<section class="chat" id="r3-chat" aria-label="R3 assistant">
+  {# Drag a resume file over the chat: this overlay takes the drop. #}
+  <div class="resume-drop" id="resume-drop" hidden><p>Drop your resume here<span>PDF, DOCX, TXT or MD · up to {{ (max_upload // 1048576) }} MB</span></p></div>
+  <header class="chat-header">
+    <div class="chat-identity">
+      <span class="chat-avatar" aria-hidden="true">R3</span>
+      <div>
+        <h2>R3 assistant</h2>
+        <p class="chat-connection"><span class="chat-dot {{ 'ready' if chat_ready }}" aria-hidden="true"></span><span id="chat-model-name">{% if chat_ready %}{% for m in models if m.id == default_model %}{{ m.label }}{% else %}{{ default_model }}{% endfor %}{% else %}Setup required{% endif %}</span></p>
+      </div>
+    </div>
+    <div class="chat-model"{{ ' hidden' if not is_admin and models|length < 2 }}>
+      <label class="sr-only" for="chat-model">Model</label>
+      <select id="chat-model"{{ ' disabled' if not (chat_ready and models) }}>
+        {% if models and not is_admin %}
+        {% for m in models %}
+        <option value="{{ m.id }}" data-label="{{ m.label.split(' · ', 1)[-1] }}"{{ ' selected' if m.id == default_model }}>{{ m.label.split(' · ', 1)[-1] }}</option>
+        {% endfor %}
+        {% elif models %}
+        {% for provider in models|map(attribute="provider")|unique %}
+        {% set pname = provider_names.get(provider, provider) %}
+        <optgroup label="{{ pname }}">
+          {% for m in models if m.provider == provider %}
+          <option value="{{ m.id }}" data-label="{{ m.label }}"{{ ' selected' if m.id == default_model }}>{{ m.label.removeprefix(pname ~ ' · ') }}</option>
+          {% endfor %}
+        </optgroup>
+        {% endfor %}
+        {% if custom_ok %}
+        <option value="__custom__">Custom OpenRouter model…</option>
+        {% endif %}
+        {% else %}
+        <option value="{{ default_model }}" selected>{{ default_model }}</option>
+        {% endif %}
+      </select>
+      {% if is_admin %}
+      <label class="sr-only" for="chat-model-custom">OpenRouter model id</label>
+      <input id="chat-model-custom" type="text" list="chat-model-catalogue" placeholder="vendor/model" spellcheck="false" autocomplete="off" maxlength="140" hidden>
+      <datalist id="chat-model-catalogue"></datalist>
+      {% else %}
+      <input id="chat-model-custom" type="hidden" value="">
+      {% endif %}
+    </div>
+    <button class="btn ghost tiny" id="chat-new" type="button">＋ New chat</button>
+  </header>
+
+  {% if not chat_ready %}
+  <div class="chat-setup" role="status">{{ chat_setup }}</div>
+  {% endif %}
+
+  <div class="chat-scroll" id="chat-scroll">
+    <div class="chat-welcome" id="chat-welcome">
+      <span class="chat-avatar large" aria-hidden="true">R3</span>
+      {% if is_admin %}
+      <h3>What are we working on?</h3>
+      <p>Ask for advice, or tell R3 what to show: it lists jobs and reports the numbers. Every workflow shows up in the Pipelines panel.</p>
+      <div class="chat-starters">
+        <button type="button" data-prompt="Where do things stand?"><span aria-hidden="true">Stats</span>Where do things stand?</button>
+        <button type="button" data-prompt="Show me new remote SRE jobs"><span aria-hidden="true">Jobs</span>Show me new remote SRE jobs</button>
+        <button type="button" data-prompt="Show me new AI/ML jobs from this week"><span aria-hidden="true">Jobs</span>Show me new AI/ML jobs from this week</button>
+        <button type="button" data-prompt="How should I position myself for platform roles?"><span aria-hidden="true">Advice</span>How should I position myself for platform roles?</button>
+      </div>
+      {% else %}
+      <h3>How can I help with your job search?</h3>
+      <p>Ask for advice or tell R3 what to look for. The jobs it finds show up in the panel.</p>
+      <div class="chat-starters">
+        <button type="button" data-prompt="Show me new remote DevOps jobs"><span aria-hidden="true">Find</span>Show me new remote DevOps jobs</button>
+        <button type="button" data-prompt="Show me AI infrastructure jobs from this week"><span aria-hidden="true">Jobs</span>Show me AI infrastructure jobs from this week</button>
+        <button type="button" data-prompt="How well does my resume fit job #"><span aria-hidden="true">Fit</span>How well does my resume fit job #…?</button>
+        <a class="chat-starter-link" href="{{ base_path }}/resume/build"><span>Resume</span>Help me build my resume</a>
+      </div>
+      {% endif %}
+    </div>
+    <div id="chat-messages" role="log" aria-label="Conversation" aria-live="polite" aria-relevant="additions"></div>
+  </div>
+
+  <div class="chat-bottom">
+    <p class="chat-error" id="chat-error" role="alert" hidden></p>
+    <form id="chat-form" class="chat-composer">
+      <div class="resume-chip" id="resume-chip" hidden></div>
+      <input type="file" id="resume-file" class="sr-only" accept=".pdf,.docx,.txt,.md" tabindex="-1" aria-label="Choose a resume file">
+      <label class="sr-only" for="chat-input">Message R3</label>
+      <textarea id="chat-input" name="message" rows="2" maxlength="8000" placeholder="Message R3…" required {{ 'disabled' if not chat_ready }}></textarea>
+      <div class="chat-composer-actions">
+        <button type="button" class="btn ghost chat-attach" id="resume-upload" aria-describedby="resume-upload-hint"><span aria-hidden="true">📎</span> Upload resume</button>
+        <span class="sr-only" id="resume-upload-hint">A PDF, DOCX, TXT or MD file up to {{ (max_upload // 1048576) }} MB. You can also drag the file onto the chat.</span>
+        <div class="chat-options">
+          <label class="chat-option"><input type="checkbox" id="chat-context" {{ 'checked' if settings.include_context }}> Include portal summary</label>
+          <label class="chat-option" title="Answer in conversation only; never start a workflow"><input type="checkbox" id="chat-advice"> Advice only</label>
+        </div>
+        <div class="chat-buttons">
+          <button type="button" class="btn ghost" id="chat-stop" hidden>Stop</button>
+          <button type="submit" class="btn go" id="chat-send" disabled>Send <span aria-hidden="true">↑</span></button>
+        </div>
+      </div>
+    </form>
+    <p class="chat-footnote">Enter to send · Shift + Enter for a new line · drop a resume file on the chat to upload it</p>
+  </div>
+</section>
+
+<aside class="panel" id="r3-panel" aria-label="{{ 'Pipelines' if is_admin else 'Your search' }}" data-runs-configured="{{ 'true' if runs_info.configured else 'false' }}">
+  <header class="panel-header">
+    {% if not is_admin %}
+    <h2>Your search</h2>
+  </header>
+    {% else %}
+    <h2>Pipelines</h2>
+    <div class="panel-chips">
+      {% if runs_info.configured and runs_info.backend == "temporal" %}
+        {% if runs_info.ui_url %}
+        <a class="chip ok" id="runner-chip" href="{{ runs_info.ui_url|safe_url }}" target="_blank" rel="noopener" title="Open Temporal">Temporal · {{ runs_info.namespace }}</a>
+        {% else %}
+        <span class="chip ok" id="runner-chip">Temporal · {{ runs_info.namespace }}</span>
+        {% endif %}
+      {% elif runs_info.configured %}
+        <a class="chip" id="runner-chip" href="#setup" title="{{ runs_info.reason or 'Runs execute in-process' }}">Local runs</a>
+      {% else %}
+        <a class="chip warn" id="runner-chip" href="#setup" title="{{ runs_info.reason }}">Runs off</a>
+      {% endif %}
+    </div>
+  </header>
+  <details class="panel-setup" id="setup">
+    <summary>Runner setup</summary>
+    <p id="setup-reason">{{ runs_info.reason or ('Runs execute on Temporal.' if runs_info.backend == 'temporal' else 'Runs execute in-process.') }}</p>
+    <dl class="setup-facts">
+      <div><dt>Backend</dt><dd id="setup-backend">{{ runs_info.backend }}</dd></div>
+      <div><dt>Namespace</dt><dd id="setup-namespace">{{ runs_info.namespace or '—' }}</dd></div>
+      <div><dt>Task queue</dt><dd id="setup-queue">{{ runs_info.task_queue or '—' }}</dd></div>
+    </dl>
+    <p>Set <code>TEMPORAL_ADDRESS</code> (with <code>TEMPORAL_NAMESPACE</code>, <code>TEMPORAL_API_KEY</code>) to run on Temporal and start <code>r3-worker</code>; <code>R3_RUNS_BACKEND=local</code> runs in-process for development and <code>none</code> switches runs off.</p>
+  </details>
+  {% endif %}
+
+  {% if not is_admin %}
+  <div class="panel-tabs" role="tablist" aria-label="Your search">
+    <button type="button" role="tab" id="tab-runs" data-tab="runs" aria-controls="pane-runs" aria-selected="true">Activity <span class="tab-badge" id="runs-badge" hidden></span></button>
+    <button type="button" role="tab" id="tab-jobs" data-tab="jobs" aria-controls="pane-jobs" aria-selected="false" tabindex="-1">Jobs</button>
+    <button type="button" role="tab" id="tab-stats" data-tab="stats" aria-controls="pane-stats" aria-selected="false" tabindex="-1">Your numbers</button>
+  </div>
+  {% else %}
+  <div class="panel-tabs" role="tablist" aria-label="Pipelines panel">
+    <button type="button" role="tab" id="tab-overview" data-tab="overview" aria-controls="pane-overview" aria-selected="true">Overview</button>
+    <button type="button" role="tab" id="tab-runs" data-tab="runs" aria-controls="pane-runs" aria-selected="false" tabindex="-1">Runs <span class="tab-badge" id="runs-badge" hidden></span></button>
+    <button type="button" role="tab" id="tab-jobs" data-tab="jobs" aria-controls="pane-jobs" aria-selected="false" tabindex="-1">Jobs</button>
+    <button type="button" role="tab" id="tab-stats" data-tab="stats" aria-controls="pane-stats" aria-selected="false" tabindex="-1">Stats</button>
+  </div>
+  {% endif %}
+
+  <div class="panel-scroll" id="panel-scroll">
+    <div class="panel-notices" id="panel-notices" aria-live="polite"></div>
+
+    {% if not is_admin %}
+    <div id="pane-overview"><div class="suggestions" id="panel-suggestions" hidden></div></div>
+    {% else %}
+    <section class="panel-pane" id="pane-overview" role="tabpanel" aria-labelledby="tab-overview" tabindex="0">
+      <div class="suggestions" id="panel-suggestions" hidden></div>
+      <div class="quick-actions" aria-label="Quick actions" role="group">
+        <button type="button" class="btn tiny" data-quick="stats" data-needs-runs>▦ Snapshot stats</button>
+        <button type="button" class="btn tiny" data-quick="review">Review new jobs</button>
+      </div>
+      <h3 class="pane-title">Pipeline stages</h3>
+      <div class="pipes" id="r3-pipelines">
+        {% for p in pipelines %}
+        <article class="pipe" data-pipeline="{{ p.key }}" title="{{ p.summary }}">
+          <h3>{{ p.name }}</h3>
+          {% if facts %}
+          <dl class="pipe-facts">
+            {% for f in facts[p.key] %}
+            <div class="{{ 'warn' if f.warn }}"><dt>{{ f.label }}</dt><dd>{{ f.value }}</dd></div>
+            {% endfor %}
+          </dl>
+          {% else %}
+          <p class="pipe-unavailable">Live numbers unavailable: the database did not answer.</p>
+          {% endif %}
+          <p class="pipe-links">{% for link in p.links %}<a href="{{ base_path }}{{ link.href }}">{{ link.label }}</a>{% endfor %}</p>
+        </article>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    <section class="panel-pane" id="pane-runs" role="tabpanel" aria-labelledby="tab-runs" tabindex="0" hidden>
+      <div class="pane-bar">
+        <h3 class="pane-title">{{ 'Recent runs' if is_admin else 'Recent activity' }}</h3>
+        <button type="button" class="btn tiny ghost" id="runs-refresh">Refresh</button>
+      </div>
+      <ol class="runs" id="runs-list"></ol>
+      <p class="pane-empty" id="runs-empty">{% if is_admin %}No runs yet. Ask R3 to snapshot the stats, or use the quick actions on Overview.{% else %}Nothing yet. Ask R3 to snapshot your numbers; its runs show up here.{% endif %}</p>
+      <p class="sr-only" id="runs-live" role="status" aria-live="polite"></p>
+    </section>
+
+    <section class="panel-pane" id="pane-jobs" role="tabpanel" aria-labelledby="tab-jobs" tabindex="0" hidden>
+      <form class="jobs-filter" id="jobs-filter" role="search" aria-label="Filter jobs">
+        <label class="sr-only" for="jobs-status">Status</label>
+        <select id="jobs-status" name="status">
+          {% if is_admin %}
+          <option value="new" selected>new</option>
+          <option value="applied">applied</option>
+          <option value="skipped">skipped</option>
+          <option value="expired">expired</option>
+          {% else %}
+          <option value="new" selected>New</option>
+          <option value="applied">Applied</option>
+          <option value="skipped">Skipped</option>
+          <option value="expired">Expired</option>
+          {% endif %}
+          <option value="all">any status</option>
+        </select>
+        <label class="sr-only" for="jobs-role">Role</label>
+        <input id="jobs-role" name="role" type="text" list="jobs-roles" placeholder="Role, e.g. SRE" autocomplete="off">
+        <datalist id="jobs-roles"></datalist>
+        <label class="sr-only" for="jobs-days">Added within</label>
+        <select id="jobs-days" name="days">
+          <option value="">any time</option>
+          <option value="1">24h</option>
+          <option value="7">7 days</option>
+          <option value="30">30 days</option>
+          <option value="90">90 days</option>
+        </select>
+        <label class="jobs-remote"><input type="checkbox" name="remote" value="1"> Remote</label>
+        <label class="sr-only" for="jobs-q">Search</label>
+        <input id="jobs-q" name="q" type="search" placeholder="Search title, company…" autocomplete="off">
+        <button type="submit" class="btn tiny">Filter</button>
+      </form>
+      <div class="pane-bar">
+        <h3 class="pane-title" id="jobs-title">{{ 'Unreviewed jobs' if is_admin else 'New jobs' }}</h3>
+        <a class="pane-link" id="jobs-open" href="{{ base_path }}/jobs?status=new">Open in Jobs page →</a>
+      </div>
+      <p class="pane-count" id="jobs-count" aria-live="polite"></p>
+      <ul class="jobs" id="jobs-list"></ul>
+      <p class="pane-empty" id="jobs-empty" hidden>No jobs match these filters.</p>
+    </section>
+
+    <section class="panel-pane" id="pane-stats" role="tabpanel" aria-labelledby="tab-stats" tabindex="0" hidden>
+      <div class="pane-bar">
+        <h3 class="pane-title">{{ 'Statistics' if is_admin else 'Your numbers' }}</h3>
+        <div class="pane-tools">
+          <label class="sr-only" for="stats-days">Window</label>
+          <select id="stats-days">
+            <option value="7">7 days</option>
+            <option value="30" selected>30 days</option>
+            <option value="90">90 days</option>
+          </select>
+          <button type="button" class="btn tiny ghost" id="stats-refresh">Refresh</button>
+        </div>
+      </div>
+      <div id="stats-body"><p class="pane-empty">Statistics load when you open this tab.</p></div>
+    </section>
+  </div>
+</aside>
+</div>
+<script src="{{ base_path }}/static/{{ asset("controller.js") }}" defer></script>
+{% endblock %}

@@ -1,0 +1,126 @@
+{% extends "layout.html" %}
+{% block content %}
+{# Regular accounts see a job seeker's page; admins also get the operator
+   metadata. ``postings`` (R3_JOB_POSTINGS) says whether this viewer reads the
+   posting and its links; without it a seeker gets the teaser (OQ-6). #}
+{% set is_seeker = seeker is defined and seeker %}
+{% set show_posting = postings is not defined or postings %}
+<p class="crumb"><a href="{{ base_path }}/jobs">← all jobs</a></p>
+
+<div class="dethead">
+  <div>
+    <h1>{{ job.position }}</h1>
+    <p class="sub">
+      {{ job.company|company|dash }} · {{ job.location|dash }}
+      {% if job.location_kind %}<span class="tag lk">{{ job.location_kind }}</span>{% endif %}
+      <span class="pill {{ job.status }}">{{ "not for me" if is_seeker and job.status == "skipped" else job.status }}</span>
+    </p>
+  </div>
+  <div class="detactions">
+    {% if is_seeker %}
+    {# A job seeker marks a job applied or not-for-me, and can undo either. #}
+    {% if show_posting %}<a class="btn go" href="{{ (job.apply_url or job.job_url)|safe_url }}" target="_blank" rel="noopener">Open posting <span aria-hidden="true">↗</span><span class="sr-only"> (opens in new tab)</span></a>{% endif %}
+    <form method="post" action="{{ base_path }}/jobs/{{ job.id }}/status" class="inline">
+      <input type="hidden" name="redirect" value="1">
+      {% if job.status == "new" %}
+      <button class="btn" type="submit" name="status" value="applied">I applied</button>
+      <button class="btn" type="submit" name="status" value="skipped">Not for me</button>
+      {% elif job.status in ("applied", "skipped") %}
+      <button class="btn ghost" type="submit" name="status" value="new">Undo “{{ "applied" if job.status == "applied" else "not for me" }}”</button>
+      {% endif %}
+    </form>
+    {% else %}
+    <a class="btn go" href="{{ (job.apply_url or job.job_url)|safe_url }}" target="_blank" rel="noopener">Open posting <span aria-hidden="true">↗</span><span class="sr-only"> (opens in new tab)</span></a>
+    <form method="post" action="{{ base_path }}/jobs/{{ job.id }}/status" class="inline">
+      <input type="hidden" name="redirect" value="1">
+      <select name="status">
+        {% for st in ["new", "applied", "skipped", "expired"] %}
+        <option value="{{ st }}" {{ 'selected' if job.status == st }}>{{ st }}</option>
+        {% endfor %}
+      </select>
+      <button class="btn" type="submit">Set status</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+{# job match: the posting's tags the seeker's resume shows, and the rest. #}
+{% if is_seeker and match_skills is defined and match_skills and job.tech_tags %}
+{% set match_tags = job.tech_tags|unique|list %}
+{% set matched = match_tags|select("in", match_skills)|list %}
+{% set missing = match_tags|reject("in", match_skills)|list %}
+<p class="job-match">
+  Your resume shows {{ matched|length }} of the {{ match_tags|length }} skills this posting lists.
+  {% if matched %}<span class="tags">{% for t in matched %}<span class="tag matched">{{ t }}</span>{% endfor %}</span>{% endif %}
+  {% if missing %}<span class="muted small">Not on your resume:</span>
+  <span class="tags">{% for t in missing %}<span class="tag missing"><span class="sr-only">missing: </span>{{ t }}</span>{% endfor %}</span>{% endif %}
+</p>
+{% endif %}
+
+<dl class="meta">
+  {% if not is_seeker %}<div><dt>Site</dt><dd><a href="{{ base_path }}/jobs?site={{ job.site_url|urlencode }}">{{ job.site_name }}</a></dd></div>{% endif %}
+  <div><dt>Role</dt><dd>{{ job.role_category|dash }}</dd></div>
+  <div><dt>Employment</dt><dd>{{ job.employment|dash }}</dd></div>
+  <div><dt>Salary</dt><dd>{{ salary(job.salary_min, job.salary_max, job.salary) }}</dd></div>
+  <div><dt>Posted</dt><dd>{{ job.posted_date|date }}</dd></div>
+  {% if is_seeker %}
+  <div><dt>Availability</dt><dd>{% if job.live %}Live{% if job.last_validation == "alive" and job.last_validated_at %} <span class="muted">· checked {{ job.last_validated_at|ago }}</span>{% endif %}{% else %}No longer live{% endif %}</dd></div>
+  {% if job.applied_at %}<div><dt>Applied</dt><dd>{{ job.applied_at|datetime }}</dd></div>{% endif %}
+  {% else %}
+  <div><dt>Added</dt><dd>{{ job.scraped_at|datetime }}</dd></div>
+  <div><dt>Applied</dt><dd>{{ job.applied_at|datetime }}</dd></div>
+  <div><dt>Validation</dt><dd>{{ job.last_validation|dash }} <span class="muted">{{ job.last_validated_at|ago }}</span></dd></div>
+  <div><dt>Verification</dt><dd>{{ job.verification_status|dash }}</dd></div>
+  <div><dt>Job ID</dt><dd class="mono">{{ job.id }}</dd></div>
+  {% endif %}
+</dl>
+
+{% if job.tech_tags %}
+<p class="tags big">{% for t in job.tech_tags %}<a class="tag" href="{{ base_path }}/jobs?tech={{ t|urlencode }}">{{ t }}</a>{% endfor %}</p>
+{% endif %}
+
+<div class="cols2">
+  {% if not show_posting %}
+  <section id="about" aria-labelledby="about-h">
+    <h2 id="about-h">About this role</h2>
+    <div id="job-overview" class="overview" aria-live="polite">{% include "_job_overview.html" %}</div>
+  </section>
+  {% else %}
+  <section>
+    <h2>Description</h2>
+    <div class="desc" tabindex="0" role="region" aria-label="Job description">
+      {% for p in job.description|paragraphs %}<p>{{ p }}</p>{% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <aside>
+    <h2 id="notes-h">Notes</h2>
+    <form method="post" action="{{ base_path }}/jobs/{{ job.id }}/notes">
+      <textarea name="notes" id="notes" aria-labelledby="notes-h" rows="8" placeholder="Your notes on this posting…">{{ job.notes }}</textarea>
+      <button class="btn" type="submit">Save notes</button>
+    </form>
+
+    <h2 id="history-h">What happened</h2>
+    {% if history %}
+    <ol class="history" aria-labelledby="history-h">
+      {% for h in history %}
+      <li><span class="muted small"><time datetime="{{ h.at.isoformat() }}" title="{{ h.at|datetime }}">{{ h.at|ago }}</time> · {{ h.who }}</span><br>{{ h.summary }}</li>
+      {% endfor %}
+    </ol>
+    {% else %}
+    <p class="muted small">Nothing yet. What you and R3 do with this job will be listed here.</p>
+    {% endif %}
+    {% if not is_seeker %}<p class="small"><a href="{{ base_path }}/events?subject=job:{{ job.id }}">Full trail for this job</a></p>{% endif %}
+
+    {% if show_posting %}
+    <h2>Links</h2>
+    <ul class="links">
+      <li><a href="{{ job.job_url|safe_url }}" target="_blank" rel="noopener">{{ job.job_url|truncate(60) }}</a></li>
+      {% if job.apply_url %}<li><a href="{{ job.apply_url|safe_url }}" target="_blank" rel="noopener">apply: {{ job.apply_url|truncate(50) }}</a></li>{% endif %}
+      {% if not is_seeker %}<li><a href="{{ job.site_url|safe_url }}" target="_blank" rel="noopener">site: {{ job.site_url|host }}</a></li>{% endif %}
+    </ul>
+    {% endif %}
+  </aside>
+</div>
+{% endblock %}

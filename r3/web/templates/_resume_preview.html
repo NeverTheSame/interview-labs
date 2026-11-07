@@ -1,0 +1,30 @@
+{# The live resume on /resume/build, rendered from a ResumeDraft. #}
+{% set c = draft.contact %}
+{% set contact = [c.email, c.phone, c.location] + c.links %}
+<article class="rb-paper" aria-label="Resume preview">
+  {% if draft.full_name or draft.headline or contact|select|list %}
+  <header class="rb-paper-head">
+    <h2>{{ draft.full_name or "Your name" }}</h2>
+    {% if draft.headline %}<p class="rb-headline">{{ draft.headline }}</p>{% endif %}
+    {% if contact|select|list %}<p class="rb-contact">{{ contact|select|join(" · ") }}</p>{% endif %}
+  </header>
+  {% else %}
+  <p class="rb-placeholder">Your resume appears here as you answer.</p>
+  {% endif %}
+  {% if draft.summary %}<section><h3>Summary</h3><p>{{ draft.summary }}</p></section>{% endif %}
+  {% if draft.experience %}
+  <section><h3>Experience</h3>
+    {% for j in draft.experience %}
+    <div class="rb-job">
+      <p class="rb-job-title"><strong>{{ j.title }}</strong>{% if j.company %}{{ " — " if j.title }}{{ j.company }}{% endif %}{% if j.location %}, {{ j.location }}{% endif %}</p>
+      {% if j.start or j.end %}<p class="rb-dates">{{ [j.start, j.end]|select|join(" – ") }}</p>{% endif %}
+      {% if j.bullets %}<ul>{% for b in j.bullets %}<li>{{ b }}</li>{% endfor %}</ul>{% endif %}
+    </div>
+    {% endfor %}
+  </section>
+  {% endif %}
+  {% if draft.skills %}<section><h3>Skills</h3><p>{{ draft.skills|join(", ") }}</p></section>{% endif %}
+  {% for heading, items in [("Education", draft.education), ("Certifications", draft.certifications), ("Additional", draft.extras)] if items %}
+  <section><h3>{{ heading }}</h3><ul>{% for x in items %}<li>{{ x }}</li>{% endfor %}</ul></section>
+  {% endfor %}
+</article>

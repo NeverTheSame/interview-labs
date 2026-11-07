@@ -1,0 +1,58 @@
+id = "redis-caching"
+title = "Redis: cache-aside, invalidation, rate limiting, leaderboards"
+level = "beginner"
+minutes = 45
+skills = ["redis", "amazon elasticache", "caching", "rate limiting", "python"]
+services = ["redis"]
+
+interview_questions = [
+  "Walk through cache-aside. What happens on a miss, a hit and an update, and where can a reader see stale data?",
+  "Why delete the cached key on update instead of writing the new value into the cache?",
+  "Many requests miss the same hot key at once. What is a cache stampede and how do you prevent it?",
+  "Your rate limiter does INCR and then EXPIRE as two commands. What can go wrong between them?",
+  "Fixed window, sliding window or token bucket: what does each allow at the edge of a window?",
+  "Redis runs out of memory. What do the eviction policies do, and which fits a cache?",
+]
+
+[fidelity]
+real = [
+  "A real Redis 7.4 server runs your commands",
+  "TTLs, transactions (MULTI/EXEC) and sorted sets behave exactly as in production",
+]
+stand_in = [
+  "The slow database is a fake that counts its reads, so the checks can see cache hits",
+  "This is a single Redis server; ElastiCache's managed parts (replicas, failover, cluster mode) are not here",
+]
+differs_on_aws = [
+  "ElastiCache runs in your VPC; clients connect through security groups, often with TLS and AUTH or IAM",
+  "In cluster mode keys are spread over shards by hash slot; multi-key commands need keys in the same slot",
+  "A replica can be promoted on failure, so clients must reconnect and tolerate a short outage",
+  "maxmemory-policy decides what is evicted when memory runs out",
+]
+
+[[tasks]]
+id = "cache-aside"
+title = "Cache-aside reads"
+description = "get_product reads product:{id} from Redis and only goes to the database on a miss, then caches the product as JSON with a TTL between 60 and 600 seconds."
+check = "cache_aside"
+hint = "r.set(key, json.dumps(product), ex=300)"
+
+[[tasks]]
+id = "invalidation"
+title = "Invalidate on write"
+description = "After update_product, the next get_product returns the new data."
+check = "invalidation"
+
+[[tasks]]
+id = "rate-limit"
+title = "Rate limit"
+description = "allow_request allows `limit` calls per `window` seconds per user on the key rate:{user_id}, and the counter always expires."
+check = "rate_limit"
+hint = "INCR and EXPIRE in one MULTI/EXEC pipeline; EXPIRE ... NX sets the expiry only on the first call."
+
+[[tasks]]
+id = "leaderboard"
+title = "Most viewed products"
+description = "record_view counts views in the sorted set product_views; top_products(n) returns the n most viewed ids, most viewed first."
+check = "leaderboard"
+hint = "ZINCRBY and ZREVRANGE"

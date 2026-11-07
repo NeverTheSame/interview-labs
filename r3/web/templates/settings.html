@@ -1,0 +1,123 @@
+{% extends "layout.html" %}
+{% block head %}
+  <link rel="stylesheet" href="{{ base_path }}/static/{{ asset("settings.css") }}">
+  <script src="{{ base_path }}/static/{{ asset("settings.js") }}" defer></script>
+{% endblock %}
+{% block content %}
+{% set source_labels = {"portal": "set in portal", "env": "from environment", "default": "default"} %}
+<div class="set-page" id="r3-settings" data-base-path="{{ base_path }}">
+  <header class="set-head">
+    <div class="set-intro">
+      <h1>Settings</h1>
+      <p class="sub">Keys, endpoints and switches for the Controller. Saved values apply at once and persist across
+        restarts. Secrets are encrypted at rest and never sent back to the browser.</p>
+    </div>
+    <div class="set-summary" aria-live="polite">
+      <div class="set-summary-text">
+        <strong id="set-summary-count">{{ tests|length }} connections</strong>
+        <span id="set-summary-detail" class="muted">not tested yet</span>
+      </div>
+      <button class="btn go" id="set-test-all" type="button" disabled>Test all</button>
+    </div>
+  </header>
+
+  {% if state.pinned or not state.store.available %}
+    <p class="set-notice warn" id="set-store-notice">{{ state.store.error or "Portal overrides are unavailable." }}
+      Values below are read from the environment.</p>
+  {% endif %}
+  <noscript><p class="set-notice">JavaScript is needed to save and test. This view shows where each value comes from.</p></noscript>
+  {% set applied = state.applied %}
+  <p class="set-notice ok" id="set-applied" {% if not applied %}hidden{% endif %}>
+    {% if applied %}Applied {{ applied.applied_at[:19] | replace("T", " ") }} UTC · rebuilt {{ applied.rebuilt | join(", ") }}{% endif %}
+  </p>
+
+  <div class="set-grid">
+  {% for g in state.groups %}
+    <section class="set-card" id="group-{{ g.id }}" data-group="{{ g.id }}" aria-labelledby="group-{{ g.id }}-title">
+      <header class="set-card-head">
+        <h2 id="group-{{ g.id }}-title">{{ g.title }}</h2>
+        <p>{{ g.description }}</p>
+      </header>
+
+      {% if g.tests %}
+      <ul class="set-tests" aria-label="{{ g.title }} connection tests">
+        {% for t in g.tests %}
+        <li class="set-test" data-test="{{ t.id }}" data-configured="{{ 'true' if t.configured else 'false' }}">
+          <div class="set-test-line">
+            <span class="set-test-name">{{ t.label }}</span>
+            <span class="set-pill idle" data-pill="{{ t.id }}">{{ "not tested" if t.configured else "not configured" }}</span>
+            <button class="btn tiny" type="button" data-action="test" data-test="{{ t.id }}" disabled>Test connection</button>
+          </div>
+          <p class="set-test-msg" data-result="{{ t.id }}">{{ t.describes }}</p>
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+
+      {% if g["keys"] %}
+      <form class="set-form" data-group="{{ g.id }}" autocomplete="off" novalidate>
+        {% for k in g["keys"] %}
+        <div class="set-field" data-name="{{ k.name }}" data-kind="{{ k.kind }}"
+             data-secret="{{ 'true' if k.secret else 'false' }}" data-source="{{ k.source }}">
+          <div class="set-label">
+            <label for="f-{{ k.name }}">{{ k.label }}</label>
+            <code class="set-env">{{ k.name }}</code>
+            <span class="set-src src-{{ k.source }}" data-src>{{ source_labels[k.source] }}</span>
+            <button class="set-clear" type="button" data-action="clear" {% if k.source != "portal" %}hidden{% endif %}
+                    title="Remove the portal value; the environment value (or the default) applies again">Clear override</button>
+          </div>
+
+          <div class="set-control">
+          {% if k.secret %}
+            <div class="set-secret {{ 'is-set' if k.set else 'is-unset' }}">
+              <span class="set-masked" data-masked {% if not k.set %}hidden{% endif %}>
+                <span class="set-dots">{{ k.masked }}</span>
+                <span class="muted" data-masked-src>{{ source_labels[k.source] }}</span>
+              </span>
+              <button class="btn tiny" type="button" data-action="replace" {% if not k.set %}hidden{% endif %} disabled>Replace</button>
+              {% if k.kind == "pem" %}
+                <textarea id="f-{{ k.name }}" name="{{ k.name }}" rows="4" spellcheck="false" data-initial=""
+                          placeholder="-----BEGIN PRIVATE KEY----- …" {% if k.set %}hidden{% endif %}></textarea>
+              {% else %}
+                <input id="f-{{ k.name }}" name="{{ k.name }}" type="password" autocomplete="new-password"
+                       spellcheck="false" data-initial="" placeholder="{{ 'Paste a new value' if k.set else 'Not set' }}"
+                       {% if k.set %}hidden{% endif %}>
+              {% endif %}
+              <button class="btn tiny ghost" type="button" data-action="cancel" hidden>Cancel</button>
+            </div>
+          {% elif k.kind in ("select", "bool") %}
+            {% set opts = k.options if k.kind == "select" else ["1", "0"] %}
+            {% set names = {"1": "on", "0": "off"} %}
+            <select id="f-{{ k.name }}" name="{{ k.name }}" data-initial="{{ k.value }}">
+              <option value="" {% if k.value == "" %}selected{% endif %}>default ({{ names.get(k.default, k.default) }})</option>
+              {% for o in opts %}
+                <option value="{{ o }}" {% if k.value == o %}selected{% endif %}>{{ names.get(o, o) if k.kind == "bool" else o }}</option>
+              {% endfor %}
+            </select>
+          {% elif k.kind == "pem" %}
+            <textarea id="f-{{ k.name }}" name="{{ k.name }}" rows="3" spellcheck="false" data-initial="{{ k.value }}"
+                      placeholder="-----BEGIN CERTIFICATE----- … or /path/on/server.pem">{{ k.value }}</textarea>
+          {% else %}
+            <input id="f-{{ k.name }}" name="{{ k.name }}" type="text" value="{{ k.value }}" data-initial="{{ k.value }}"
+                   spellcheck="false" placeholder="{{ k.default or 'not set' }}"
+                   {% if k.kind in ("int", "ratio") %}inputmode="decimal"{% endif %}>
+          {% endif %}
+          </div>
+          <p class="set-help">{{ k.help }}</p>
+          {% if k.get("warning") %}<p class="set-error">{{ k.warning }}</p>{% endif %}
+          <p class="set-error" data-error hidden></p>
+        </div>
+        {% endfor %}
+        <footer class="set-card-foot">
+          <span class="set-status" data-status aria-live="polite"></span>
+          <button class="btn go" type="submit" disabled>Save</button>
+        </footer>
+      </form>
+      {% endif %}
+    </section>
+  {% endfor %}
+  </div>
+
+  <script type="application/json" id="set-state">{{ state | tojson }}</script>
+</div>
+{% endblock %}

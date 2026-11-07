@@ -1,0 +1,70 @@
+{% extends "layout.html" %}
+{# A job seeker's start page. Only their own numbers and one line about the
+   shared corpus; the operator overview (overview.html) is for admins. #}
+{% block content %}
+<h1>Hi, {{ account_name }}</h1>
+<p class="sub">R3 collects job postings, matches the skills in your resume against the skills each posting lists and keeps track of where you applied.</p>
+
+<div class="stats home-stats">
+  <a class="stat accent" href="{{ base_path }}/jobs?status=new">
+    <div class="n">{{ stats.new_jobs|thousands }}</div><div class="l">new for you</div>
+  </a>
+  <a class="stat" href="{{ base_path }}/jobs?status=applied">
+    <div class="n">{{ stats.applied_jobs|thousands }}</div><div class="l">applied by you</div>
+  </a>
+</div>
+
+<h2>Get started</h2>
+<ol class="checklist">
+  <li class="{{ 'done' if primary }}">
+    {% if primary %}<span class="ck" role="img" aria-label="Done">✓</span>{% else %}<span class="ck" aria-hidden="true">1</span>{% endif %}
+    <div class="ck-body">
+      <h3>Add your resume</h3>
+      {% if primary %}
+      <p>Your main resume is <a href="{{ base_path }}/resume/{{ primary.id }}">{{ primary.title }}</a>{% if resume_count > 1 %} ({{ resume_count }} resumes in all){% endif %}. <a href="{{ base_path }}/resume">Manage your resumes</a></p>
+      {% else %}
+      <p>Everything else starts from it. Upload or paste the one you have, or let R3 write one with you.</p>
+      <p class="ck-acts">
+        <a class="btn go" href="{{ base_path }}/resume">Upload or paste a resume</a>
+        <a class="btn" href="{{ base_path }}/resume/build">Build one by answering a few questions</a>
+      </p>
+      {% endif %}
+    </div>
+  </li>
+  <li>
+    <span class="ck" aria-hidden="true">2</span>
+    <div class="ck-body">
+      <h3>Find jobs that fit</h3>
+      <p>{% if stats.new_jobs %}{{ stats.new_jobs|thousands }} job{{ "s" if stats.new_jobs != 1 }} you haven't looked at yet.{% else %}You've been through every job R3 has right now.{% endif %}
+         Browse and filter them, start from a ready-made search, or tell the assistant what you're after.</p>
+      {% if best_matches %}
+      <h4 class="best-matches-h">Best matches for you</h4>
+      <ul class="best-matches">
+        {% for j in best_matches %}
+        <li><a href="{{ base_path }}/jobs/{{ j.id }}">{{ j.position }}</a>{% if j.company %} <span class="muted">· {{ j.company|company }}</span>{% endif %}
+          <span class="match-badge">{{ j.match_count }} of {{ j.match_total }} skills</span></li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+      <p class="ck-acts">
+        <a class="btn{{ ' go' if primary }}" href="{{ base_path }}/jobs?status=new">Browse jobs</a>
+        <a class="btn" href="{{ base_path }}/scout">Explore searches</a>
+        <a class="btn" href="{{ base_path }}/controller">Ask the assistant</a>
+      </p>
+    </div>
+  </li>
+  <li class="{{ 'done' if stats.applied_jobs }}">
+    {% if stats.applied_jobs %}<span class="ck" role="img" aria-label="Done">✓</span>{% else %}<span class="ck" aria-hidden="true">3</span>{% endif %}
+    <div class="ck-body">
+      <h3>Track your applications</h3>
+      {% if stats.applied_jobs %}
+      <p>You've marked <a href="{{ base_path }}/jobs?status=applied">{{ stats.applied_jobs|thousands }} job{{ "s" if stats.applied_jobs != 1 }} as applied</a>.</p>
+      {% else %}
+      <p>After you apply somewhere, press <em>Applied</em> on that job so it moves to your applied list. Changed your mind? Every mark can be undone.</p>
+      {% endif %}
+    </div>
+  </li>
+</ol>
+
+<p class="corpus">{{ stats.total_jobs|thousands }} jobs from {{ corpus_sites|thousands }} job sites{% if stats.last_scrape_at %}, newest added {{ stats.last_scrape_at|ago }}{% endif %}.</p>
+{% endblock %}

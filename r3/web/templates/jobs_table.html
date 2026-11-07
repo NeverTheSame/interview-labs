@@ -1,0 +1,41 @@
+{# Renders the jobs result set: count line, table, pagination.
+   Swapped into #results by HTMX on every filter change. #}
+{% from "_job_row.html" import job_row %}
+{% if oob_status is defined and oob_status %}<div id="jobs-status" class="sr-only" role="status" hx-swap-oob="true">{{ page.total|thousands }} job{{ "s" if page.total != 1 }}</div>{% endif %}
+<div class="resulthead">
+  <strong>{{ page.total|thousands }}</strong> job{{ "s" if page.total != 1 }}
+  {% if page.pages > 1 %}<span class="muted">· page {{ page.number }} of {{ page.pages }}</span>{% endif %}
+</div>
+
+{% if not jobs %}
+  <p class="empty">No jobs match these filters.</p>
+{% else %}
+<div class="table-scroll" role="region" aria-label="Jobs list" tabindex="0">
+<table class="grid jobs">
+  <thead>
+    <tr>
+      <th>Position</th><th>Company</th><th>Location</th>
+      <th>Role</th><th>Salary</th>{% if not (seeker is defined and seeker) %}<th>Site</th>{% endif %}
+      <th>{{ "Found" if seeker is defined and seeker else "Scraped" }}</th><th>Status</th><th class="actions">Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for job in jobs %}{{ job_row(job, seeker is defined and seeker, match_skills if match_skills is defined else none) }}{% endfor %}
+  </tbody>
+</table>
+</div>
+
+{% if page.pages > 1 %}
+<nav class="pager" aria-label="Pagination">
+  {% if page.has_prev %}
+    <a class="btn" hx-get="{{ base_path }}/jobs{{ qs(query, page=1) }}" hx-target="#results" hx-push-url="true" href="{{ base_path }}/jobs{{ qs(query, page=1) }}">« first</a>
+    <a class="btn" hx-get="{{ base_path }}/jobs{{ qs(query, page=page.number - 1) }}" hx-target="#results" hx-push-url="true" href="{{ base_path }}/jobs{{ qs(query, page=page.number - 1) }}">‹ prev</a>
+  {% endif %}
+  <span class="muted">{{ page.number }} / {{ page.pages }}</span>
+  {% if page.has_next %}
+    <a class="btn" hx-get="{{ base_path }}/jobs{{ qs(query, page=page.number + 1) }}" hx-target="#results" hx-push-url="true" href="{{ base_path }}/jobs{{ qs(query, page=page.number + 1) }}">next ›</a>
+    <a class="btn" hx-get="{{ base_path }}/jobs{{ qs(query, page=page.pages) }}" hx-target="#results" hx-push-url="true" href="{{ base_path }}/jobs{{ qs(query, page=page.pages) }}">last »</a>
+  {% endif %}
+</nav>
+{% endif %}
+{% endif %}

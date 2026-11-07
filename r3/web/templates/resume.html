@@ -1,0 +1,71 @@
+{% extends "layout.html" %}
+{% block content %}
+<h1>Resume</h1>
+<p class="sub">R3 matches the skills in your primary resume against the skills each job posting lists.</p>
+
+{% if not resumes %}
+<div class="empty resume-empty">
+  <p class="strong">You have not added a resume yet.</p>
+  <p>Upload your resume file or paste its text below. R3 matches the skills in your resume against the
+     skills each job posting lists, so you can see which jobs suit you. Until you add one, R3 has nothing to
+     match jobs against.</p>
+  <p class="resume-build-cta"><a class="btn go" href="{{ base_path }}/resume/build">No resume yet? Build one by answering a few questions</a></p>
+</div>
+{% else %}
+<div class="table-scroll" role="region" aria-label="Your resumes" tabindex="0">
+<table class="grid resume-list">
+  <thead>
+    <tr><th>Title</th><th>Source</th><th>Updated</th><th class="num">Characters</th><th><span class="sr-only">Actions</span></th></tr>
+  </thead>
+  <tbody>
+    {% for r in resumes %}
+    <tr>
+      <td>
+        <a class="strong" href="{{ base_path }}/resume/{{ r.id }}">{{ r.title }}</a>
+        {% if r.is_primary %}<span class="pill primary">primary</span>{% endif %}
+        {% if r.filename %}<div class="muted small">{{ r.filename }}</div>{% endif %}
+      </td>
+      <td>{{ r.source }}</td>
+      <td title="{{ r.updated_at|datetime }}">{{ r.updated_at|ago }}</td>
+      <td class="num">{{ r.chars|thousands }}</td>
+      <td class="resume-actions">
+        {% if not r.is_primary %}
+        <form method="post" action="{{ base_path }}/resume/{{ r.id }}/primary">
+          <button class="btn tiny" type="submit">Make primary<span class="sr-only"> {{ r.title }}</span></button>
+        </form>
+        {% endif %}
+        <a class="btn tiny ghost" href="{{ base_path }}/resume/{{ r.id }}/download">Download<span class="sr-only"> {{ r.title }}</span></a>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}
+
+{% if resumes %}<p class="resume-build-link">No resume for this kind of job yet? <a href="{{ base_path }}/resume/build">Build one by answering a few questions</a>.</p>{% endif %}
+<div class="cols resume-add">
+  <section>
+    <h2>Upload a file</h2>
+    <form class="resume-form" method="post" action="{{ base_path }}/resume/upload" enctype="multipart/form-data">
+      <label for="upload-file">Resume file <span class="muted small">PDF, Word (.docx), .txt or .md, up to {{ max_mb }} MB</span></label>
+      <input id="upload-file" type="file" name="file" accept="{{ accepted }}" required{% if upload_error %} aria-invalid="true" aria-describedby="upload-error" autofocus{% endif %}>
+      <label for="upload-title">Title <span class="muted small">optional, defaults to the file name</span></label>
+      <input id="upload-title" type="text" name="title" maxlength="200">
+      {% if upload_error %}<p class="form-error" id="upload-error" role="alert">{{ upload_error }}</p>{% endif %}
+      <button class="btn go" type="submit">Upload resume</button>
+    </form>
+  </section>
+  <section>
+    <h2>Paste text</h2>
+    <form class="resume-form" method="post" action="{{ base_path }}/resume/paste">
+      <label for="paste-title">Title <span class="muted small">optional</span></label>
+      <input id="paste-title" type="text" name="title" maxlength="200" value="{{ paste_title }}" placeholder="Pasted resume">
+      <label for="paste-content">Resume text <span class="muted small">at least {{ min_chars }} characters</span></label>
+      <textarea id="paste-content" name="content" rows="12" maxlength="{{ max_chars }}" required{% if paste_error %} aria-invalid="true" aria-describedby="paste-error" autofocus{% endif %}>{{ paste_content }}</textarea>
+      {% if paste_error %}<p class="form-error" id="paste-error" role="alert">{{ paste_error }}</p>{% endif %}
+      <button class="btn go" type="submit">Save resume</button>
+    </form>
+  </section>
+</div>
+{% endblock %}

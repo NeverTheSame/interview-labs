@@ -1,0 +1,45 @@
+{% extends "layout.html" %}
+{% block content %}
+{% set is_seeker = seeker is defined and seeker %}
+{# Explore: the same tiles for everyone, counted over the viewer's own triage. #}
+<div class="dethead">
+  <div>
+    <h1>Explore jobs</h1>
+    <p class="sub">
+      Ready-made searches over the stored jobs. Each tile counts
+      {{ "all" if scope == "all" else "your new" }} jobs, out of
+      <strong>{{ total|thousands }}</strong> {{ "in all" if scope == "all" else "you haven't looked at yet" }}.
+    </p>
+  </div>
+  <div class="scopeswitch">
+    <a class="btn big {{ 'on' if scope != 'all' }}" href="{{ base_path }}/scout">New for you</a>
+    <a class="btn big {{ 'on' if scope == 'all' }}" href="{{ base_path }}/scout?scope=all">All jobs</a>
+  </div>
+</div>
+
+<h2>{{ "Popular searches" if is_seeker else "Curated hunts" }}</h2>
+<div class="combos">
+  {% for c in combos %}
+  <a class="combo {{ 'empty' if not c.count }}" href="{{ base_path }}/jobs{{ c.query }}">
+    <span class="cnt">{{ c.count|thousands }}</span>
+    <span class="lbl">{{ c.label }}</span>
+    <span class="hint">{{ c.hint }}</span>
+  </a>
+  {% endfor %}
+</div>
+
+{% for g in groups %}
+<h2>{{ g.title }}{% if g.hint %} <span class="h2hint">— {{ g.hint }}</span>{% endif %}</h2>
+<div class="presets">
+  {% for p in g.items %}
+  <a class="preset {{ 'empty' if not p.count }}" href="{{ base_path }}/jobs{{ p.query }}">
+    <span class="ptext">
+      <span class="lbl">{{ p.label }}</span>
+      {% if p.hint %}<span class="hint">{{ p.hint }}</span>{% endif %}
+    </span>
+    <span class="cnt">{{ p.count|thousands }}</span>
+  </a>
+  {% endfor %}
+</div>
+{% endfor %}
+{% endblock %}

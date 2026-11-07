@@ -1,0 +1,131 @@
+/* Settings page. Uses the tokens defined in app.css (light + dark). */
+
+.set-page { max-width: 1320px; margin: 0 auto; }
+
+.set-head {
+  display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between;
+  gap: 14px 24px; margin-bottom: 16px;
+}
+.set-intro { flex: 1 1 420px; min-width: 0; }
+.set-intro .sub { margin: 4px 0 0; max-width: 680px; }
+.set-summary {
+  display: flex; align-items: center; gap: 14px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 10px 12px 10px 16px;
+}
+.set-summary-text { display: flex; flex-direction: column; line-height: 1.3; }
+.set-summary-text strong { font-size: 15px; font-variant-numeric: tabular-nums; }
+.set-summary-text strong.bad { color: var(--bad); }
+.set-summary-text span { font-size: 12px; }
+
+.set-notice {
+  margin: 0 0 14px; padding: 9px 12px; border-radius: var(--radius);
+  border: 1px solid var(--line); background: var(--panel); font-size: 13px;
+}
+.set-notice.ok { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-strong); }
+.set-notice.warn { border-color: var(--warn); background: var(--warn-soft); color: var(--warn); }
+
+.set-grid {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start;
+}
+
+.set-card {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+  min-width: 0; overflow: hidden;
+}
+.set-card-head { padding: 14px 18px 10px; }
+.set-card-head h2 {
+  margin: 0 0 3px; font-size: 15px; color: var(--ink); text-transform: none; letter-spacing: -.01em;
+}
+.set-card-head p { margin: 0; color: var(--muted); font-size: 12.5px; line-height: 1.45; }
+
+/* Connection tests: one row per vendor, result inline. */
+.set-tests { list-style: none; margin: 0 18px 12px; padding: 0; border: 1px solid var(--line);
+             border-radius: var(--radius); background: var(--bg); }
+.set-test { padding: 9px 12px; }
+.set-test + .set-test { border-top: 1px solid var(--line); }
+.set-test-line { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.set-test-name { font-weight: 600; font-size: 13px; margin-right: auto; }
+.set-test-msg { margin: 4px 0 0; font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.set-test-msg.bad { color: var(--bad); }
+
+.set-pill {
+  display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
+  font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px;
+  border: 1px solid var(--line); color: var(--muted); background: var(--panel);
+  font-variant-numeric: tabular-nums;
+}
+.set-pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .7; }
+.set-pill.good { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+.set-pill.bad { color: var(--bad); border-color: var(--bad); }
+.set-pill.busy { color: var(--warn); border-color: var(--warn); background: var(--warn-soft); }
+.set-pill.busy::before { animation: set-pulse 1s ease-in-out infinite; }
+@keyframes set-pulse { 50% { opacity: .2; } }
+
+/* Fields. */
+.set-form { border-top: 1px solid var(--line); }
+.set-field { padding: 12px 18px; border-bottom: 1px solid var(--line); }
+.set-field.is-dirty { box-shadow: inset 3px 0 0 var(--warn); }
+.set-label { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin-bottom: 6px; }
+.set-label label { font-weight: 600; font-size: 13px; }
+.set-env { font-family: var(--mono); font-size: 11px; color: var(--muted); overflow-wrap: anywhere; }
+.set-src {
+  font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em;
+  padding: 1px 6px; border-radius: 4px; border: 1px solid var(--line); color: var(--muted);
+}
+.set-src.src-portal { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+.set-src.src-env { color: var(--ink); border-color: var(--btn-line); }
+.set-clear {
+  margin-left: auto; background: none; border: 0; padding: 2px 0; cursor: pointer;
+  font: inherit; font-size: 12px; color: var(--muted); text-decoration: underline; text-underline-offset: 2px;
+}
+.set-clear:hover { color: var(--bad); }
+.set-clear:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+
+.set-control input, .set-control select, .set-control textarea {
+  width: 100%; background: var(--bg); color: var(--ink);
+  border: 1px solid var(--btn-line); border-radius: var(--radius);
+  padding: 7px 9px; font: inherit; font-size: 13px; min-height: 34px;
+}
+.set-control textarea { font-family: var(--mono); font-size: 12px; resize: vertical; line-height: 1.4; }
+.set-control input[type="text"] { font-family: var(--mono); font-size: 12.5px; }
+.set-control :is(input, select, textarea):focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+.set-control select { max-width: 320px; }
+.set-control [hidden] { display: none !important; }
+
+.set-secret { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.set-secret input, .set-secret textarea { flex: 1 1 260px; }
+.set-masked {
+  display: inline-flex; align-items: baseline; gap: 8px; min-height: 34px; padding: 6px 10px;
+  border: 1px dashed var(--btn-line); border-radius: var(--radius); background: var(--bg);
+  font-size: 12.5px; margin-right: auto;
+}
+.set-dots { font-family: var(--mono); letter-spacing: .06em; }
+
+.set-help { margin: 5px 0 0; font-size: 12px; color: var(--muted); line-height: 1.45; }
+.set-error { margin: 5px 0 0; font-size: 12px; color: var(--bad); }
+
+.set-card-foot {
+  display: flex; align-items: center; justify-content: flex-end; gap: 12px;
+  padding: 11px 18px; background: var(--bg);
+}
+.set-status { font-size: 12.5px; color: var(--muted); margin-right: auto; }
+.set-status.good { color: var(--accent); }
+.set-status.bad { color: var(--bad); }
+.set-page button:disabled { opacity: .5; cursor: not-allowed; }
+.set-page .btn.go:disabled:hover { background: var(--accent); color: var(--on-accent); }
+
+@media (max-width: 1100px) {
+  .set-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 600px) {
+  .set-summary { width: 100%; justify-content: space-between; }
+  .set-card-head, .set-field, .set-card-foot { padding-left: 14px; padding-right: 14px; }
+  .set-tests { margin-left: 14px; margin-right: 14px; }
+  .set-control select { max-width: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .set-pill.busy::before { animation: none; }
+}

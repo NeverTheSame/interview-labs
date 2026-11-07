@@ -1,0 +1,6 @@
+{# What /label/next and POST /label/{id} answer: the counter and the flash
+   line swap out of band into the page header; the card fills #label-card. #}
+{% from "_label_counter.html" import counter %}
+{{ counter(counts) }}
+<p id="label-flash" class="lab-flash" role="status" aria-live="polite" hx-swap-oob="true"{% if not flash %} hidden{% endif %}>{{ flash }}</p>
+{% include "_label_card.html" %}

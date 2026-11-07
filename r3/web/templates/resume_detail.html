@@ -1,0 +1,46 @@
+{% extends "layout.html" %}
+{% block content %}
+<p class="crumb"><a href="{{ base_path }}/resume">← all resumes</a></p>
+
+<div class="dethead">
+  <div>
+    <h1>{{ resume.title }}</h1>
+    <p class="sub">
+      {{ resume.source }}{% if resume.filename %} · {{ resume.filename }}{% endif %}
+      {% if resume.is_primary %}<span class="pill primary">primary</span>{% endif %}
+    </p>
+  </div>
+  <div class="detactions">
+    <a class="btn" href="{{ base_path }}/resume/{{ resume.id }}/pdf">Download PDF</a>
+    <a class="btn" href="{{ base_path }}/resume/{{ resume.id }}/download">Download .txt</a>
+    {% if not resume.is_primary %}
+    <form method="post" action="{{ base_path }}/resume/{{ resume.id }}/primary">
+      <button class="btn" type="submit">Make primary</button>
+    </form>
+    {% endif %}
+    <form method="post" action="{{ base_path }}/resume/{{ resume.id }}/delete">
+      <button class="btn ghost" type="submit">Delete</button>
+    </form>
+  </div>
+</div>
+
+{% if missing %}
+<p class="resume-missing">Missing: {{ missing|join("; ") }}. <a class="btn tiny go" href="{{ base_path }}/controller?resume={{ resume.id }}">Finish in the Assistant</a></p>
+{% endif %}
+
+<dl class="meta">
+  <div><dt>Added</dt><dd>{{ resume.created_at|datetime }}</dd></div>
+  <div><dt>Updated</dt><dd>{{ resume.updated_at|datetime }}</dd></div>
+  <div><dt>Characters</dt><dd>{{ resume.chars|thousands }}</dd></div>
+</dl>
+
+<h2>Edit</h2>
+<form class="resume-form" method="post" action="{{ base_path }}/resume/{{ resume.id }}">
+  <label for="resume-title">Title</label>
+  <input id="resume-title" type="text" name="title" maxlength="200" value="{{ form_title }}" required>
+  <label for="resume-content">Resume text</label>
+  <textarea id="resume-content" name="content" rows="30" required>{{ form_content }}</textarea>
+  {% if error %}<p class="form-error" role="alert">{{ error }}</p>{% endif %}
+  <button class="btn go" type="submit">Save changes</button>
+</form>
+{% endblock %}

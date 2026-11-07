@@ -1,0 +1,10 @@
+{# The counter in the page header. Every card fragment carries a copy marked
+   hx-swap-oob, so HTMX refreshes it in place; on the initial page the
+   attribute is inert. #}
+{% macro counter(counts) %}
+<div class="lab-counter" id="label-counter" hx-swap-oob="true" aria-label="Progress">
+  <span><strong>{{ counts.today|thousands }}</strong> today</span>
+  <span><strong>{{ counts.total|thousands }}</strong> total</span>
+  <span><strong>{{ counts.remaining|thousands }}</strong> left in filter</span>
+</div>
+{% endmacro %}

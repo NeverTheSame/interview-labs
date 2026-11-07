@@ -1,0 +1,117 @@
+{% extends "layout.html" %}
+{% block content %}
+<h1>Jobs</h1>
+{% if seeker is defined and seeker and resume_hint is defined and resume_hint %}
+<p class="match-hint muted"><a href="{{ base_path }}/resume">Add your resume</a> to see which jobs match your skills.</p>
+{% endif %}
+
+<form class="filters" id="job-filters"
+      hx-get="{{ base_path }}/jobs" hx-target="#results" hx-swap="innerHTML"
+      hx-push-url="true" hx-trigger="change, search, submit">
+  <label class="sr-only" for="f-q">Search jobs</label>
+  <input type="search" name="q" id="f-q" value="{{ filter.search }}" placeholder="Search title, company, description…" class="wide">
+
+  <label class="sr-only" for="f-status">Status</label>
+  <select name="status" id="f-status">
+    <option value="">any status</option>
+    {% for v in facets.statuses %}
+      <option value="{{ v.value }}" {{ 'selected' if filter.status == v.value }}>{{ v.value }} ({{ v.count }})</option>
+    {% endfor %}
+  </select>
+
+  <label class="sr-only" for="f-role">Role</label>
+  <select name="role" id="f-role">
+    <option value="">any role</option>
+    {% for v in facets.role_categories %}
+      <option value="{{ v.value }}" {{ 'selected' if filter.role_category == v.value }}>{{ v.value }} ({{ v.count }})</option>
+    {% endfor %}
+  </select>
+
+  <label class="sr-only" for="f-location">Location</label>
+  <select name="location" id="f-location">
+    <option value="">anywhere</option>
+    {% for v in facets.location_kinds %}
+      <option value="{{ v.value }}" {{ 'selected' if filter.location_kind == v.value }}>{{ v.value }} ({{ v.count }})</option>
+    {% endfor %}
+  </select>
+
+  <label class="sr-only" for="f-employment">Employment type</label>
+  <select name="employment" id="f-employment">
+    <option value="">any type</option>
+    {% for v in facets.employments %}
+      <option value="{{ v.value }}" {{ 'selected' if filter.employment == v.value }}>{{ v.value }} ({{ v.count }})</option>
+    {% endfor %}
+  </select>
+
+  <label class="sr-only" for="f-tech">Technology</label>
+  <select name="tech" id="f-tech">
+    <option value="">any tech</option>
+    {% for v in facets.tech_tags %}
+      <option value="{{ v.value }}" {{ 'selected' if filter.tech_tag == v.value }}>{{ v.value }} ({{ v.count }})</option>
+    {% endfor %}
+  </select>
+
+  {% if seeker is defined and seeker %}
+  {# The per-site list (hundreds of boards, adapter-suffixed) is operator
+     detail; a site filter that came in on a link still applies. #}
+  {% if filter.site_url %}<input type="hidden" name="site" value="{{ filter.site_url }}">{% endif %}
+  {% else %}
+  <label class="sr-only" for="f-site">Site</label>
+  <select name="site" id="f-site">
+    <option value="">all sites</option>
+    {% for s in sites %}
+      <option value="{{ s.url }}" {{ 'selected' if filter.site_url == s.url }}>{{ s.name }} ({{ s.count }})</option>
+    {% endfor %}
+  </select>
+  {% endif %}
+
+  <label class="sr-only" for="f-days">Posted within</label>
+  <select name="days" id="f-days">
+    <option value="">any time</option>
+    <option value="1"  {{ 'selected' if filter.days == 1 }}>last 24h</option>
+    <option value="7"  {{ 'selected' if filter.days == 7 }}>last 7 days</option>
+    <option value="30" {{ 'selected' if filter.days == 30 }}>last 30 days</option>
+    <option value="90" {{ 'selected' if filter.days == 90 }}>last 90 days</option>
+  </select>
+
+  <label class="sr-only" for="f-min_salary">Minimum salary</label>
+  <select name="min_salary" id="f-min_salary">
+    <option value="">any salary</option>
+    <option value="100000" {{ 'selected' if filter.min_salary == 100000 }}>$100k+</option>
+    <option value="150000" {{ 'selected' if filter.min_salary == 150000 }}>$150k+</option>
+    <option value="200000" {{ 'selected' if filter.min_salary == 200000 }}>$200k+</option>
+  </select>
+
+  <label class="sr-only" for="f-sort">Sort by</label>
+  <select name="sort" id="f-sort">
+    {% if seeker is defined and seeker and match_skills is defined and match_skills %}
+    <option value="match"    {{ 'selected' if filter.sort == 'match' }}>best match</option>
+    {% endif %}
+    <option value="newest"   {{ 'selected' if filter.sort == 'newest' }}>newest scraped</option>
+    <option value="oldest"   {{ 'selected' if filter.sort == 'oldest' }}>oldest scraped</option>
+    <option value="posted"   {{ 'selected' if filter.sort == 'posted' }}>newest posted</option>
+    <option value="salary"   {{ 'selected' if filter.sort == 'salary' }}>highest salary</option>
+    <option value="company"  {{ 'selected' if filter.sort == 'company' }}>company A–Z</option>
+    <option value="position" {{ 'selected' if filter.sort == 'position' }}>title A–Z</option>
+    {% if not (seeker is defined and seeker) %}
+    <option value="site"     {{ 'selected' if filter.sort == 'site' }}>site</option>
+    {% endif %}
+  </select>
+
+  <label class="sr-only" for="f-size">Results per page</label>
+  <select name="size" id="f-size">
+    <option value="25"  {{ 'selected' if page.size == 25 }}>25/page</option>
+    <option value="50"  {{ 'selected' if page.size == 50 }}>50/page</option>
+    <option value="100" {{ 'selected' if page.size == 100 }}>100/page</option>
+  </select>
+
+  <a class="btn ghost" href="{{ base_path }}/jobs">Reset</a>
+  <span class="htmx-indicator spinner">loading…</span>
+</form>
+
+<div id="jobs-status" role="status" class="sr-only"></div>
+
+<div id="results">
+  {% include "jobs_table.html" %}
+</div>
+{% endblock %}

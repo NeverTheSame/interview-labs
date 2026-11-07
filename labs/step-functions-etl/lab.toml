@@ -1,0 +1,64 @@
+id = "step-functions-etl"
+title = "Orchestrate a nightly ETL with Step Functions"
+level = "intermediate"
+minutes = 60
+skills = ["aws step functions", "aws lambda", "workflow orchestration", "etl", "error handling", "amazon sqs"]
+services = ["stepfunctions", "lambda", "sqs"]
+
+interview_questions = [
+  "Which errors should a pipeline retry and which should it not? How does your state machine tell them apart?",
+  "Explain Retry with IntervalSeconds, MaxAttempts and BackoffRate. Why add jitter?",
+  "What is the difference between Retry and Catch, and in which order do they apply?",
+  "Standard or Express workflows: what changes for price, duration and execution guarantees?",
+  "How would you re-run one failed night without re-running the ones that succeeded?",
+  "Step Functions or Airflow (MWAA) for this pipeline? What tips the choice?",
+]
+
+[fidelity]
+real = [
+  "Your state machine definition (Amazon States Language) is executed state by state",
+  "Task states invoke your real Lambda function; its error type becomes the state's error name",
+  "Retry and Catch behave as written: attempts, intervals, error matching, ResultPath",
+  "The SQS service integration really sends the message",
+]
+stand_in = [
+  "IAM is not enforced: the state machine's role can be any ARN",
+]
+differs_on_aws = [
+  "The state machine's role needs lambda:InvokeFunction and sqs:SendMessage on these resources",
+  "Standard workflows are billed per state transition, Express per request and duration",
+  "Lambda's own service errors (Lambda.ServiceException, Lambda.TooManyRequestsException) also need a Retry",
+  "Executions show up in the console's graph view and in CloudWatch; failures can alarm",
+]
+
+[[tasks]]
+id = "function"
+title = "Deploy the extract step"
+description = "Deploy starter/extract.py as the Python Lambda `extract` with the handler extract.handler."
+check = "function"
+
+[[tasks]]
+id = "alerts"
+title = "Create the alerts queue"
+description = "Create the SQS queue `etl-alerts`. The pipeline reports failures there."
+check = "alerts"
+
+[[tasks]]
+id = "happy-path"
+title = "Run the pipeline"
+description = "Create a STANDARD state machine `nightly-etl` that calls `extract` with the execution input. An input of {\"date\": \"2026-11-01\"} succeeds and its output contains the row count."
+check = "happy_path"
+
+[[tasks]]
+id = "retry"
+title = "Retry what can recover"
+description = "A TransientError is retried at least twice with backoff before the run gives up. Keep the waits short (a few seconds in total)."
+check = "retry"
+hint = "Retry: [{\"ErrorEquals\": [\"TransientError\"], \"IntervalSeconds\": 1, \"MaxAttempts\": 2, \"BackoffRate\": 2}]"
+
+[[tasks]]
+id = "no-retry"
+title = "Fail fast on bad data, and say so"
+description = "A BadDataError is never retried. Any failure that gets through ends the run as FAILED and first sends a message to `etl-alerts` that names the error type."
+check = "no_retry"
+hint = "Catch: [{\"ErrorEquals\": [\"States.ALL\"], \"ResultPath\": \"$.error\", \"Next\": \"Alert\"}], then an arn:aws:states:::sqs:sendMessage task and a Fail state."

@@ -1,0 +1,64 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="ctl-head">
+  <h1>Build your resume</h1>
+  <p class="sub">Answer a few questions; your resume takes shape on the right. Nothing is added that you did not say.</p>
+</div>
+{% if scripted %}<p class="rb-mode">No AI model is configured, so this is the basic interview: answers are filed exactly as you type them.</p>{% endif %}
+<noscript><p class="ctl-noscript">The interview needs JavaScript. You can still <a href="{{ base_path }}/resume">paste or upload a resume</a>.</p></noscript>
+
+<div class="rb-workspace" id="rb" data-base-path="{{ base_path }}">
+<section class="chat rb-chat" aria-label="Resume interview">
+  <header class="chat-header">
+    <div class="chat-identity">
+      <span class="chat-avatar" aria-hidden="true">R3</span>
+      <div>
+        <h2>Resume interview</h2>
+        <p class="chat-connection"><span class="chat-dot ready" aria-hidden="true"></span>One question at a time · say “skip” to move on</p>
+      </div>
+    </div>
+    <form method="post" action="{{ base_path }}/resume/build/reset" id="rb-reset">
+      <button class="btn tiny ghost" type="submit">Start over</button>
+    </form>
+  </header>
+  <div class="chat-scroll" id="rb-scroll">
+    <div id="rb-log" aria-live="polite">
+      {% for e in history %}
+      <article class="msg {{ 'user' if e.role == 'user' else 'assistant' }}">
+        <div class="msg-label">{{ "You" if e.role == "user" else "R3" }}</div>
+        <div class="msg-body">{{ e.text }}</div>
+      </article>
+      {% endfor %}
+    </div>
+    <div class="msg-thinking" id="rb-thinking" role="status" hidden><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>Thinking…</div>
+  </div>
+  <form id="rb-form" class="chat-composer rb-composer" method="post" action="{{ base_path }}/resume/build/answer">
+    <label class="sr-only" for="rb-input">Your answer</label>
+    <textarea id="rb-input" name="answer" aria-describedby="rb-hint" rows="3" maxlength="{{ max_answer }}" required
+              placeholder="Type your answer… Enter sends, Shift+Enter starts a new line"></textarea>
+    <p class="msg-error" id="rb-error" role="alert" hidden></p>
+    <div class="rb-actions">
+      <span class="muted small" id="rb-hint">You can paste an old resume or LinkedIn profile too.</span>
+      <button class="btn" type="submit" id="rb-send">Send</button>
+    </div>
+  </form>
+</section>
+
+<aside class="rb-panel" aria-label="Your resume so far">
+  <div class="rb-progress" id="rb-progress">{% include "_resume_progress.html" %}</div>
+  <form class="rb-save" method="post" action="{{ base_path }}/resume/build/save">
+    {% if error %}<p class="form-error" role="alert">{{ error }}</p>{% endif %}
+    <label for="rb-title" class="small muted">Title in your library</label>
+    <div class="rb-save-row">
+      <input id="rb-title" name="title" maxlength="{{ max_title }}" value="{{ save_title }}" placeholder="e.g. Data analyst resume">
+      <button class="btn{{ ' primary' if done }}" type="submit">Save to my resumes</button>
+    </div>
+    <p class="muted small">Next after saving: <a href="{{ base_path }}/jobs?status=new">Jobs</a> — your best
+       matches are at the top. Open one, apply on the employer's site, then mark it
+       <em>I applied</em>.</p>
+  </form>
+  <div id="rb-preview">{% include "_resume_preview.html" %}</div>
+</aside>
+</div>
+<script src="{{ base_path }}/static/{{ asset("resume_build.js") }}" defer></script>
+{% endblock %}

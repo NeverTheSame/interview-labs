@@ -14,6 +14,9 @@ Two parts in one repo:
   starts the lab stack (MiniStack pinned in `compose.yaml`).
 - `uv run pytest -q` runs all tests. Lab tests marked `ministack` skip when nothing
   listens on :4566; browser tests in `tests/e2e` skip unless `R3_E2E_PG_URL` is set.
+- Every checkout on the machine shares one local stack. Tests marked `ministack` take a
+  lock in the temp dir, so parallel runs (other worktrees) queue instead of colliding;
+  `labs reset` by hand wipes the stack for everyone.
 - `uv run labs check <lab>` checks one lab; `uv run labs solve <lab>` applies the
   reference solution (used by the tests).
 
